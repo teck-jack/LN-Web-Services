@@ -65,5 +65,32 @@ export const employeeService = {
     const response = await api.get(`/employee/cases/${caseId}/timeline`, { params });
     return response.data;
   },
-};
 
+  // End User Management
+  getEndUsers: async (params: { page?: number; limit?: number; search?: string; sourceTag?: string }) => {
+    const response = await api.get('/employee/end-users', { params });
+    return response.data;
+  },
+
+  getServices: async () => {
+    const response = await api.get('/employee/services');
+    return response.data;
+  },
+
+  enrollUserInService: async (data: { userId: string; serviceId: string; notes?: string }) => {
+    const response = await api.post('/employee/enroll', data);
+    return response.data;
+  },
+
+  // Create new end user (with optional service enrollment)
+  createEndUser: async (data: {
+    name: string;
+    email: string;
+    password: string;
+    phone: string;
+    serviceId?: string
+  }) => {
+    const response = await api.post('/employee/users', data);
+    return response.data;
+  },
+};

@@ -134,6 +134,21 @@ const CaseSchema = new mongoose.Schema({
     type: String,
     enum: ['low', 'medium', 'high', 'urgent'],
     default: 'medium'
+  },
+  // 🆕 AUDIT TRAIL FIELDS
+  enrolledBy: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'User',
+    default: null  // null for self-enrollment
+  },
+  enrollmentType: {
+    type: String,
+    enum: ['self', 'admin', 'employee', 'agent', 'associate'],
+    default: 'self'
+  },
+  enrolledAt: {
+    type: Date,
+    default: Date.now
   }
 }, {
   toJSON: { virtuals: true },

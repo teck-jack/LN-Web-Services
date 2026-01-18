@@ -10,6 +10,7 @@ const {
   addNote,
   uploadDocument,
   getPayments,
+  getPaymentReceipt,
   getNotifications,
   markNotificationAsRead,
   markAllNotificationsAsRead,
@@ -37,6 +38,7 @@ router.get('/cases/:id/required-documents', getRequiredDocuments);
 router.post('/cases/:id/notes', addNote);
 router.post('/cases/:id/documents', uploadDocument);
 router.get('/payments', getPayments);
+router.get('/payments/:id/receipt', getPaymentReceipt);
 router.get('/notifications', getNotifications);
 router.put('/notifications/:id/read', markNotificationAsRead);
 router.put('/notifications/read-all', markAllNotificationsAsRead);

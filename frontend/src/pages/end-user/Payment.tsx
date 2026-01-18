@@ -8,22 +8,70 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/common/Input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
-import { ArrowLeft, CreditCard, Shield, CheckCircle2, Tag, X } from "lucide-react";
+import { ArrowLeft, CreditCard, Shield, CheckCircle2, Tag, X, PartyPopper, FileText, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import * as endUserService from "@/services/endUserService";
 import { couponService } from "@/services/couponService";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+
+// Razorpay Key from environment (fallback to test key for development)
+const RAZORPAY_KEY = import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_UfYSRe7oekOT1m";
+
+interface PaymentSuccessData {
+  case: {
+    _id: string;
+    caseId: string;
+    status: string;
+  };
+  payment: {
+    _id: string;
+    invoiceNumber: string;
+    transactionId: string;
+    amount: number;
+    status: string;
+    paymentMethod: string;
+  };
+  service: {
+    name: string;
+    type: string;
+    price: number;
+  };
+}
 
 export default function Payment() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { service, loading } = useAppSelector((state) => state.endUser);
+  const { user } = useAppSelector((state) => state.auth);
+
   const [processing, setProcessing] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [testMode, setTestMode] = useState(true);
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
   const [validatingCoupon, setValidatingCoupon] = useState(false);
+
+  // Success dialog state
+  const [successDialogOpen, setSuccessDialogOpen] = useState(false);
+  const [successData, setSuccessData] = useState<PaymentSuccessData | null>(null);
+
+  // Billing form state (pre-filled from user)
+  const [billingInfo, setBillingInfo] = useState({
+    fullName: "",
+    email: "",
+    phone: "",
+    address: "",
+    city: "",
+    postalCode: ""
+  });
 
   useEffect(() => {
     if (id) {
@@ -33,6 +81,18 @@ export default function Payment() {
       dispatch(clearService());
     };
   }, [dispatch, id]);
+
+  // Pre-fill billing info from logged-in user
+  useEffect(() => {
+    if (user) {
+      setBillingInfo(prev => ({
+        ...prev,
+        fullName: user.name || "",
+        email: user.email || "",
+        phone: user.phone || ""
+      }));
+    }
+  }, [user]);
 
   const handleValidateCoupon = async () => {
     if (!couponCode.trim()) {
@@ -59,6 +119,20 @@ export default function Payment() {
     toast.info("Coupon removed");
   };
 
+  const calculatePrices = () => {
+    const basePrice = appliedCoupon ? appliedCoupon.discount.finalAmount : service!.price;
+    const gst = Math.round(basePrice * 0.18);
+    const total = basePrice + gst;
+    const discount = appliedCoupon ? appliedCoupon.discount.discountAmount : 0;
+    return { basePrice, gst, total, discount };
+  };
+
+  const handlePaymentSuccess = (data: PaymentSuccessData) => {
+    setSuccessData(data);
+    setSuccessDialogOpen(true);
+    setProcessing(false);
+  };
+
   const handlePayment = async () => {
     if (!service || !termsAccepted) {
       toast.error("Please accept terms and conditions");
@@ -68,16 +142,16 @@ export default function Payment() {
     try {
       setProcessing(true);
 
-      if (testMode) {
-        // Test payment - verify with backend
-        const orderResponse = await endUserService.createPaymentOrder(
-          service._id,
-          true,
-          appliedCoupon?.coupon?.code
-        );
-        const { order, discount, coupon } = orderResponse.data.data;
+      // Create order on backend
+      const orderResponse = await endUserService.createPaymentOrder(
+        service._id,
+        testMode,
+        appliedCoupon?.coupon?.code
+      );
+      const { order, discount, coupon } = orderResponse.data.data;
 
-        // Verify payment
+      if (testMode) {
+        // Test payment - directly verify with test credentials
         const verifyResponse = await endUserService.verifyPayment({
           razorpay_order_id: order.id,
           razorpay_payment_id: `test_pay_${Date.now()}`,
@@ -90,20 +164,19 @@ export default function Payment() {
         });
 
         if (verifyResponse.data.success) {
-          const caseId = verifyResponse.data.data.case._id;
-          toast.success("Test payment successful! Case created.");
-          navigate(`/end-user/cases/${caseId}`);
+          handlePaymentSuccess({
+            case: verifyResponse.data.data.case,
+            payment: verifyResponse.data.data.payment,
+            service: {
+              name: service.name,
+              type: service.type,
+              price: service.price
+            }
+          });
+          toast.success("Test payment successful!");
         }
       } else {
         // Real Razorpay integration
-        const orderResponse = await endUserService.createPaymentOrder(
-          service._id,
-          false,
-          appliedCoupon?.coupon?.code
-        );
-        const { order, discount, coupon } = orderResponse.data.data;
-
-        // Load Razorpay script
         const script = document.createElement("script");
         script.src = "https://checkout.razorpay.com/v1/checkout.js";
         script.async = true;
@@ -111,11 +184,12 @@ export default function Payment() {
 
         script.onload = () => {
           const options = {
-            key: "rzp_test_YOUR_KEY_HERE", // Replace with your Razorpay key
+            key: RAZORPAY_KEY,
             amount: order.amount,
             currency: order.currency,
-            name: "IP Services",
+            name: "LN Services",
             description: service.name,
+            image: "/logo.png",
             order_id: order.id,
             handler: async function (response: any) {
               try {
@@ -124,33 +198,55 @@ export default function Payment() {
                   razorpay_payment_id: response.razorpay_payment_id,
                   razorpay_signature: response.razorpay_signature,
                   serviceId: service._id,
+                  isTestMode: false,
                   couponCode: coupon?.code,
                   couponId: coupon?.id,
                   discountInfo: discount
                 });
 
                 if (verifyResponse.data.success) {
-                  const caseId = verifyResponse.data.data.case._id;
-                  toast.success("Payment successful! Case created.");
-                  navigate(`/end-user/cases/${caseId}`);
+                  handlePaymentSuccess({
+                    case: verifyResponse.data.data.case,
+                    payment: verifyResponse.data.data.payment,
+                    service: {
+                      name: service.name,
+                      type: service.type,
+                      price: service.price
+                    }
+                  });
+                  toast.success("Payment successful!");
                 }
               } catch (error: any) {
                 toast.error(error.message || "Payment verification failed");
+                setProcessing(false);
               }
             },
             prefill: {
-              name: "User Name",
-              email: "user@example.com",
-              contact: "9999999999",
+              name: billingInfo.fullName || user?.name || "",
+              email: billingInfo.email || user?.email || "",
+              contact: billingInfo.phone || user?.phone || "",
+            },
+            notes: {
+              serviceId: service._id,
+              serviceName: service.name
             },
             theme: {
-              color: "#3b82f6",
+              color: "#6366f1", // Primary color
             },
+            modal: {
+              ondismiss: function () {
+                setProcessing(false);
+                toast.info("Payment cancelled");
+              }
+            }
           };
 
           const razorpay = new (window as any).Razorpay(options);
+          razorpay.on('payment.failed', function (response: any) {
+            toast.error(`Payment failed: ${response.error.description}`);
+            setProcessing(false);
+          });
           razorpay.open();
-          setProcessing(false);
         };
 
         script.onerror = () => {
@@ -164,9 +260,18 @@ export default function Payment() {
     }
   };
 
+  const handleSuccessClose = () => {
+    setSuccessDialogOpen(false);
+    if (successData?.case?._id) {
+      navigate(`/end-user/cases/${successData.case._id}`);
+    }
+  };
+
   if (loading || !service) {
     return <LoadingSpinner />;
   }
+
+  const prices = calculatePrices();
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -175,8 +280,8 @@ export default function Payment() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Payment</h1>
-          <p className="text-muted-foreground mt-2">Complete your purchase securely</p>
+          <h1 className="text-3xl font-bold tracking-tight">Complete Payment</h1>
+          <p className="text-muted-foreground mt-2">Securely enroll in {service.name}</p>
         </div>
       </div>
 
@@ -185,9 +290,10 @@ export default function Payment() {
           <Card>
             <CardHeader>
               <CardTitle>Payment Mode</CardTitle>
-              <CardDescription>Choose your payment method</CardDescription>
+              <CardDescription>Choose how you want to pay</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Test Mode Toggle */}
               <div className="flex items-center space-x-2 p-4 border rounded-lg bg-accent/50">
                 <Checkbox
                   id="test-mode"
@@ -196,7 +302,7 @@ export default function Payment() {
                 />
                 <label
                   htmlFor="test-mode"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  className="text-sm font-medium leading-none cursor-pointer"
                 >
                   Test Mode (For Demo Purposes)
                 </label>
@@ -209,25 +315,58 @@ export default function Payment() {
                     <div>
                       <p className="font-medium text-blue-900 dark:text-blue-100">Test Mode Active</p>
                       <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                        This is a test payment. No real money will be charged. Click "Pay Now" to simulate a successful payment.
+                        No real money will be charged. Click "Pay Now" to simulate a successful payment and get enrolled.
                       </p>
                     </div>
                   </div>
                 </div>
               )}
 
+              {/* Billing Information - Only for real payments */}
               {!testMode && (
                 <>
-                  <div>
+                  <div className="pt-2">
                     <h4 className="font-semibold mb-3">Billing Information</h4>
                     <div className="space-y-3">
-                      <Input label="Full Name" placeholder="John Doe" />
-                      <Input label="Email" type="email" placeholder="john@example.com" />
-                      <Input label="Phone" type="tel" placeholder="+91 9999999999" />
-                      <Input label="Address" placeholder="123 Main St" />
+                      <Input
+                        label="Full Name"
+                        placeholder="John Doe"
+                        value={billingInfo.fullName}
+                        onChange={(e: any) => setBillingInfo({ ...billingInfo, fullName: e.target.value })}
+                      />
+                      <Input
+                        label="Email"
+                        type="email"
+                        placeholder="john@example.com"
+                        value={billingInfo.email}
+                        onChange={(e: any) => setBillingInfo({ ...billingInfo, email: e.target.value })}
+                      />
+                      <Input
+                        label="Phone"
+                        type="tel"
+                        placeholder="+91 9999999999"
+                        value={billingInfo.phone}
+                        onChange={(e: any) => setBillingInfo({ ...billingInfo, phone: e.target.value })}
+                      />
+                      <Input
+                        label="Address"
+                        placeholder="123 Main St"
+                        value={billingInfo.address}
+                        onChange={(e: any) => setBillingInfo({ ...billingInfo, address: e.target.value })}
+                      />
                       <div className="grid grid-cols-2 gap-3">
-                        <Input label="City" placeholder="Mumbai" />
-                        <Input label="Postal Code" placeholder="400001" />
+                        <Input
+                          label="City"
+                          placeholder="Mumbai"
+                          value={billingInfo.city}
+                          onChange={(e: any) => setBillingInfo({ ...billingInfo, city: e.target.value })}
+                        />
+                        <Input
+                          label="Postal Code"
+                          placeholder="400001"
+                          value={billingInfo.postalCode}
+                          onChange={(e: any) => setBillingInfo({ ...billingInfo, postalCode: e.target.value })}
+                        />
                       </div>
                     </div>
                   </div>
@@ -235,14 +374,15 @@ export default function Payment() {
                   <div className="flex items-center gap-3 p-4 bg-primary/5 rounded-lg">
                     <Shield className="h-5 w-5 text-primary" />
                     <div>
-                      <p className="text-sm font-medium">Secure Payment</p>
+                      <p className="text-sm font-medium">Secure Payment via Razorpay</p>
                       <p className="text-xs text-muted-foreground">Your payment information is encrypted and secure</p>
                     </div>
                   </div>
                 </>
               )}
 
-              <div className="flex items-start space-x-2 pt-4">
+              {/* Terms Checkbox */}
+              <div className="flex items-start space-x-2 pt-4 border-t">
                 <Checkbox
                   id="terms"
                   checked={termsAccepted}
@@ -250,7 +390,7 @@ export default function Payment() {
                 />
                 <label
                   htmlFor="terms"
-                  className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  className="text-sm leading-none cursor-pointer"
                 >
                   I agree to the terms and conditions and understand the refund policy
                 </label>
@@ -259,20 +399,23 @@ export default function Payment() {
           </Card>
         </div>
 
+        {/* Order Summary Sidebar */}
         <div className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Order Summary</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Service Info */}
               <div>
                 <p className="font-medium">{service.name}</p>
                 <Badge variant="secondary" className="mt-1 capitalize">
                   {service.type.replace("_", " ")}
                 </Badge>
+                <p className="text-sm text-muted-foreground mt-2">{service.description}</p>
               </div>
 
-              <div className="space-y-2 pt-4 border-t">
+              <div className="space-y-3 pt-4 border-t">
                 {/* Coupon Code Section */}
                 <div className="pb-4 border-b">
                   <h4 className="font-semibold mb-3 flex items-center gap-2">
@@ -282,7 +425,7 @@ export default function Payment() {
                   {!appliedCoupon ? (
                     <div className="flex gap-2">
                       <Input
-                        placeholder="Enter coupon code"
+                        placeholder="Enter code"
                         value={couponCode}
                         onChange={(e: any) => setCouponCode(e.target.value.toUpperCase())}
                         className="font-mono"
@@ -293,7 +436,7 @@ export default function Payment() {
                         onClick={handleValidateCoupon}
                         disabled={validatingCoupon || !couponCode.trim()}
                       >
-                        {validatingCoupon ? "Validating..." : "Apply"}
+                        {validatingCoupon ? "..." : "Apply"}
                       </Button>
                     </div>
                   ) : (
@@ -305,7 +448,7 @@ export default function Payment() {
                             {appliedCoupon.coupon.code}
                           </p>
                           <p className="text-sm text-green-700 dark:text-green-300">
-                            {appliedCoupon.coupon.discountPercentage}% discount applied
+                            {appliedCoupon.coupon.discountPercentage}% off
                           </p>
                         </div>
                       </div>
@@ -330,33 +473,27 @@ export default function Payment() {
                 {appliedCoupon && (
                   <div className="flex justify-between text-sm text-green-600 dark:text-green-400">
                     <span>Discount ({appliedCoupon.coupon.discountPercentage}%)</span>
-                    <span className="font-medium">
-                      -₹{appliedCoupon.discount.discountAmount.toLocaleString()}
-                    </span>
+                    <span className="font-medium">-₹{prices.discount.toLocaleString()}</span>
                   </div>
                 )}
 
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Subtotal</span>
-                  <span className="font-medium">
-                    ₹{(appliedCoupon ? appliedCoupon.discount.finalAmount : service.price).toLocaleString()}
-                  </span>
+                  <span className="font-medium">₹{prices.basePrice.toLocaleString()}</span>
                 </div>
 
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">GST (18%)</span>
-                  <span className="font-medium">
-                    ₹{Math.round((appliedCoupon ? appliedCoupon.discount.finalAmount : service.price) * 0.18).toLocaleString()}
-                  </span>
+                  <span className="font-medium">₹{prices.gst.toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between pt-2 border-t">
+
+                <div className="flex justify-between pt-3 border-t">
                   <span className="font-semibold">Total</span>
-                  <span className="font-bold text-lg">
-                    ₹{Math.round((appliedCoupon ? appliedCoupon.discount.finalAmount : service.price) * 1.18).toLocaleString()}
-                  </span>
+                  <span className="font-bold text-xl text-primary">₹{prices.total.toLocaleString()}</span>
                 </div>
               </div>
 
+              {/* Pay Button */}
               <Button
                 className="w-full"
                 size="lg"
@@ -366,24 +503,102 @@ export default function Payment() {
                 {processing ? (
                   <>
                     <LoadingSpinner />
-                    Processing...
+                    <span className="ml-2">Processing...</span>
                   </>
                 ) : (
                   <>
                     <CreditCard className="h-5 w-5 mr-2" />
-                    {testMode ? "Pay Now (Test)" : "Pay Now"}
+                    {testMode ? `Pay ₹${prices.total.toLocaleString()} (Test)` : `Pay ₹${prices.total.toLocaleString()}`}
                   </>
                 )}
               </Button>
 
               <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground pt-2">
                 <Shield className="h-3 w-3" />
-                <span>256-bit SSL encrypted payment</span>
+                <span>256-bit SSL encrypted • PCI DSS Compliant</span>
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
+
+      {/* Success Dialog */}
+      <Dialog open={successDialogOpen} onOpenChange={setSuccessDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader className="text-center">
+            <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+              <PartyPopper className="h-8 w-8 text-green-600" />
+            </div>
+            <DialogTitle className="text-2xl text-center">Payment Successful!</DialogTitle>
+            <DialogDescription className="text-center">
+              You have been successfully enrolled in the service.
+            </DialogDescription>
+          </DialogHeader>
+
+          {successData && (
+            <div className="space-y-4 py-4">
+              {/* Case Info */}
+              <div className="bg-muted/50 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Case ID</p>
+                    <p className="font-mono font-semibold text-lg">{successData.case.caseId}</p>
+                  </div>
+                  <Badge variant="secondary" className="capitalize">{successData.case.status}</Badge>
+                </div>
+              </div>
+
+              {/* Service Info */}
+              <div className="bg-muted/50 rounded-lg p-4">
+                <p className="text-sm text-muted-foreground">Service Enrolled</p>
+                <p className="font-semibold">{successData.service.name}</p>
+                <Badge variant="outline" className="mt-1 capitalize">{successData.service.type.replace("_", " ")}</Badge>
+              </div>
+
+              {/* Payment Details */}
+              <div className="bg-green-50 dark:bg-green-950/20 rounded-lg p-4 border border-green-200 dark:border-green-800">
+                <div className="flex items-center gap-2 mb-3">
+                  <FileText className="h-4 w-4 text-green-600" />
+                  <span className="font-semibold text-green-700 dark:text-green-400">Payment Details</span>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Invoice</span>
+                    <span className="font-mono">{successData.payment.invoiceNumber}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Transaction ID</span>
+                    <span className="font-mono text-xs">{successData.payment.transactionId.substring(0, 20)}...</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Amount Paid</span>
+                    <span className="font-bold text-green-600">₹{successData.payment.amount?.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Status</span>
+                    <Badge variant="default" className="bg-green-600">{successData.payment.status}</Badge>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="flex-col gap-2 sm:flex-col">
+            <Button onClick={handleSuccessClose} className="w-full">
+              <ExternalLink className="h-4 w-4 mr-2" />
+              View Case Details
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => navigate('/end-user/payments')}
+              className="w-full"
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              View Payment History
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

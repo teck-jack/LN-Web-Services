@@ -29,6 +29,7 @@ import AdminNotifications from "./pages/admin/Notifications";
 import AdminProfile from "./pages/admin/Profile";
 import AdminSettings from "./pages/admin/Settings";
 import CouponManagement from "./pages/admin/CouponManagement";
+import AdminEndUsers from "./pages/admin/EndUsers";
 
 // Agent pages
 import AgentDashboard from "./pages/agent/Dashboard";
@@ -61,6 +62,7 @@ import CaseDetails from "./pages/employee/CaseDetails";
 import EmployeeNotifications from "./pages/employee/Notifications";
 import EmployeeProfile from "./pages/employee/Profile";
 import EmployeeSettings from "./pages/employee/Settings";
+import EmployeeEndUsers from "./pages/employee/EndUsers";
 
 // End user pages
 import EndUserDashboard from "./pages/end-user/Dashboard";
@@ -149,6 +151,7 @@ const App = () => (
                   <Route path="/admin/profile" element={<ProtectedRoute allowedRoles={["admin"]}><MainLayout><AdminProfile /></MainLayout></ProtectedRoute>} />
                   <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={["admin"]}><MainLayout><AdminSettings /></MainLayout></ProtectedRoute>} />
                   <Route path="/admin/coupons" element={<ProtectedRoute allowedRoles={["admin"]}><MainLayout><CouponManagement /></MainLayout></ProtectedRoute>} />
+                  <Route path="/admin/end-users" element={<ProtectedRoute allowedRoles={["admin"]}><MainLayout><AdminEndUsers /></MainLayout></ProtectedRoute>} />
 
                   {/* Agent routes */}
                   <Route path="/agent/dashboard" element={<ProtectedRoute allowedRoles={["agent"]}><MainLayout><AgentDashboard /></MainLayout></ProtectedRoute>} />
@@ -183,6 +186,7 @@ const App = () => (
                   <Route path="/employee/settings" element={<ProtectedRoute allowedRoles={["employee"]}><MainLayout><EmployeeSettings /></MainLayout></ProtectedRoute>} />
                   <Route path="/employee/contact-queries" element={<ProtectedRoute allowedRoles={["employee"]}><MainLayout><EmployeeContactQueries /></MainLayout></ProtectedRoute>} />
                   <Route path="/employee/contact-queries/:id" element={<ProtectedRoute allowedRoles={["employee"]}><MainLayout><EmployeeContactQueryDetails /></MainLayout></ProtectedRoute>} />
+                  <Route path="/employee/end-users" element={<ProtectedRoute allowedRoles={["employee"]}><MainLayout><EmployeeEndUsers /></MainLayout></ProtectedRoute>} />
 
                   {/* End User routes */}
                   <Route path="/end-user/dashboard" element={<ProtectedRoute allowedRoles={["end_user"]}><MainLayout><EndUserDashboard /></MainLayout></ProtectedRoute>} />

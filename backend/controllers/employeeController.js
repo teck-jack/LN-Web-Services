@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const Case = require('../models/Case');
 const Service = require('../models/Service');
+const Payment = require('../models/Payment');
 const Notification = require('../models/Notification');
 const DocumentVersion = require('../models/DocumentVersion');
 const constants = require('../utils/constants');
@@ -566,3 +567,295 @@ exports.getTimeline = async (req, res, next) => {
   }
 };
 
+// @desc    Get end users for enrollment
+// @route   GET /api/employee/end-users
+// @access  Private/Employee
+exports.getEndUsers = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 10, search = '', sourceTag } = req.query;
+
+    // Build query for all end users
+    const query = {
+      role: constants.USER_ROLES.END_USER
+    };
+
+    // Filter by source tag if provided
+    if (sourceTag && sourceTag !== 'all') {
+      query.sourceTag = sourceTag;
+    }
+
+    // Add search filter
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+        { phone: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Get users with pagination
+    const users = await User.find(query)
+      .select('name email phone isActive createdAt sourceTag agentId')
+      .populate('agentId', 'name')
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit))
+      .sort({ createdAt: -1 });
+
+    // Get total count
+    const total = await User.countDocuments(query);
+
+    // Get case counts and active case status for each user
+    const usersWithCaseData = await Promise.all(
+      users.map(async (user) => {
+        const cases = await Case.find({ endUserId: user._id });
+        const activeCases = cases.filter(c =>
+          c.status === constants.CASE_STATUS.NEW ||
+          c.status === constants.CASE_STATUS.IN_PROGRESS
+        );
+
+        return {
+          ...user.toObject(),
+          casesCount: cases.length,
+          activeCasesCount: activeCases.length,
+          hasActiveCase: activeCases.length > 0
+        };
+      })
+    );
+
+    res.status(200).json({
+      success: true,
+      count: usersWithCaseData.length,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total
+      },
+      data: usersWithCaseData
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Get available services for enrollment
+// @route   GET /api/employee/services
+// @access  Private/Employee
+exports.getServices = async (req, res, next) => {
+  try {
+    const services = await Service.find({ isActive: true })
+      .select('name type description price duration documentsRequired')
+      .sort({ name: 1 });
+
+    res.status(200).json({
+      success: true,
+      count: services.length,
+      data: services
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Enroll end user in a service (create case)
+// @route   POST /api/employee/enroll
+// @access  Private/Employee
+exports.enrollUserInService = async (req, res, next) => {
+  try {
+    const { userId, serviceId, notes } = req.body;
+
+    // Validate user exists and is an end user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    if (user.role !== constants.USER_ROLES.END_USER) {
+      return res.status(400).json({
+        success: false,
+        error: 'Only end users can be enrolled in services'
+      });
+    }
+
+    // Validate service exists and is active
+    const service = await Service.findById(serviceId);
+    if (!service) {
+      return res.status(404).json({
+        success: false,
+        error: 'Service not found'
+      });
+    }
+
+    if (!service.isActive) {
+      return res.status(400).json({
+        success: false,
+        error: 'Service is not active'
+      });
+    }
+
+    // Generate unique case ID
+    const caseCount = await Case.countDocuments();
+    const caseId = `CASE-${Date.now()}-${String(caseCount + 1).padStart(4, '0')}`;
+
+    // Create the case with audit trail
+    const newCase = await Case.create({
+      caseId,
+      endUserId: userId,
+      serviceId,
+      employeeId: req.user.id, // Assign to the employee who enrolled
+      status: constants.CASE_STATUS.NEW,
+      notes: notes ? [{ text: notes, createdBy: req.user.id }] : [],
+      // ✅ Audit trail fields
+      enrolledBy: req.user.id,
+      enrollmentType: constants.ENROLLMENT_TYPES.EMPLOYEE,
+      enrolledAt: new Date()
+    });
+
+    // Create payment record (manual enrollment by employee)
+    const transactionId = `EMP-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+
+    await Payment.create({
+      caseId: newCase._id,
+      amount: service.price,
+      originalAmount: service.price,
+      transactionId,
+      paymentMethod: 'employee_enrollment',
+      status: 'completed',
+      paymentDate: Date.now()
+    });
+
+    // Send notification to end user
+    await Notification.create({
+      recipientId: userId,
+      type: constants.NOTIFICATION_TYPES.IN_APP,
+      title: 'Service Enrollment',
+      message: `You have been enrolled in ${service.name}. Our team will start processing your case shortly.`,
+      relatedCaseId: newCase._id
+    });
+
+    // Populate the case for response
+    const populatedCase = await Case.findById(newCase._id)
+      .populate('endUserId', 'name email phone')
+      .populate('serviceId', 'name type price')
+      .populate('employeeId', 'name email');
+
+    res.status(201).json({
+      success: true,
+      message: 'User enrolled successfully',
+      data: populatedCase
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Create end user (new user registration by employee)
+// @route   POST /api/employee/users
+// @access  Private/Employee
+exports.createEndUser = async (req, res, next) => {
+  try {
+    const employeeId = req.user.id;
+    const { name, email, password, phone, serviceId } = req.body;
+
+    // Check if email already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        error: 'A user with this email already exists'
+      });
+    }
+
+    // Create end user
+    const endUser = await User.create({
+      name,
+      email,
+      password,
+      phone,
+      role: constants.USER_ROLES.END_USER,
+      sourceTag: constants.SOURCE_TAGS.EMPLOYEE,
+      leadStatus: 'converted'
+    });
+
+    // Create welcome notification for end user
+    await Notification.create({
+      recipientId: endUser._id,
+      type: constants.NOTIFICATION_TYPES.IN_APP,
+      title: 'Welcome',
+      message: 'Your account has been created successfully.',
+      relatedCaseId: null
+    });
+
+    // Notify admin
+    const admins = await User.find({ role: constants.USER_ROLES.ADMIN });
+    for (const admin of admins) {
+      await Notification.create({
+        recipientId: admin._id,
+        type: constants.NOTIFICATION_TYPES.IN_APP,
+        title: 'New User Registration',
+        message: `A new user ${name} has been registered by employee ${req.user.name}.`,
+        relatedCaseId: null
+      });
+    }
+
+    // If serviceId is provided, enroll in service
+    let caseItem = null;
+    let payment = null;
+
+    if (serviceId) {
+      const service = await Service.findById(serviceId);
+
+      if (service && service.isActive) {
+        const caseCount = await Case.countDocuments();
+        const caseId = `CASE-${Date.now()}-${String(caseCount + 1).padStart(4, '0')}`;
+
+        caseItem = await Case.create({
+          caseId,
+          endUserId: endUser._id,
+          serviceId,
+          employeeId: employeeId,
+          status: constants.CASE_STATUS.NEW,
+          enrolledBy: employeeId,
+          enrollmentType: constants.ENROLLMENT_TYPES.EMPLOYEE,
+          enrolledAt: new Date()
+        });
+
+        // Create payment record
+        const transactionId = `EMP-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+
+        payment = await Payment.create({
+          caseId: caseItem._id,
+          amount: service.price,
+          originalAmount: service.price,
+          transactionId,
+          paymentMethod: 'employee_enrollment',
+          status: 'completed',
+          paymentDate: Date.now()
+        });
+
+        // Notify end user about enrollment
+        await Notification.create({
+          recipientId: endUser._id,
+          type: constants.NOTIFICATION_TYPES.IN_APP,
+          title: 'Service Enrollment',
+          message: `You have been enrolled in ${service.name}. Our team will start processing your case shortly.`,
+          relatedCaseId: caseItem._id
+        });
+      }
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'User created successfully',
+      data: {
+        user: endUser,
+        case: caseItem,
+        payment: payment
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+};

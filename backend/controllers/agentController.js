@@ -132,7 +132,8 @@ exports.createEndUser = async (req, res, next) => {
       phone,
       role: constants.USER_ROLES.END_USER,
       sourceTag: constants.SOURCE_TAGS.AGENT,
-      agentId
+      agentId,
+      leadStatus: 'converted'
     });
 
     // Create notification for admin
@@ -148,37 +149,19 @@ exports.createEndUser = async (req, res, next) => {
       });
     }
 
-    // If serviceId is provided, create a case
-    let caseItem = null;
+    // If serviceId provided, return service details for payment processing
+    let service = null;
     if (serviceId) {
-      const service = await Service.findById(serviceId);
-
-      if (service) {
-        caseItem = await Case.create({
-          caseId: `CASE-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`.toUpperCase(),
-          endUserId: endUser._id,
-          serviceId,
-          status: constants.CASE_STATUS.NEW
-        });
-
-        // Create notification for admin about new case
-        for (const admin of admins) {
-          await Notification.create({
-            recipientId: admin._id,
-            type: constants.NOTIFICATION_TYPES.IN_APP,
-            title: 'New Case Created',
-            message: `A new case (${caseItem.caseId}) has been created for user ${name}.`,
-            relatedCaseId: caseItem._id
-          });
-        }
-      }
+      service = await Service.findById(serviceId);
     }
 
     res.status(201).json({
       success: true,
       data: {
         user: endUser,
-        case: caseItem
+        service: service,
+        // Frontend should redirect to payment page if service is provided
+        requiresPayment: !!service
       }
     });
   } catch (err) {

@@ -132,7 +132,37 @@ const UserSchema = new mongoose.Schema({
   totalCommissionEarned: {
     type: Number,
     default: 0
-  } // For agents
+  }, // For agents
+  // 🆕 LEAD MANAGEMENT FIELDS (for end users)
+  leadStatus: {
+    type: String,
+    enum: ['lead', 'contacted', 'interested', 'converted', 'lost'],
+    default: null  // null means not a lead (already converted/self-registered)
+  },
+  followUpDate: {
+    type: Date,
+    default: null
+  },
+  leadSource: {
+    type: String,
+    trim: true,
+    default: null  // e.g., 'website', 'referral', 'advertisement', 'walk-in'
+  },
+  leadNotes: [{
+    text: {
+      type: String,
+      required: true
+    },
+    createdBy: {
+      type: mongoose.Schema.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    }
+  }]
 }, {
   toJSON: { virtuals: true },
   toObject: { virtuals: true }

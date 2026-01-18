@@ -73,3 +73,6 @@ export const getRequiredDocuments = (caseId: string) => {
   return api.get(`/enduser/cases/${caseId}/required-documents`);
 };
 
+export const getPaymentReceipt = (paymentId: string) => {
+  return api.get(`/enduser/payments/${paymentId}/receipt`);
+};

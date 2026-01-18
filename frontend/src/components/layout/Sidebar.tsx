@@ -47,6 +47,12 @@ const navItems: NavItem[] = [
     roles: ["admin"],
   },
   {
+    title: "End Users",
+    href: "/admin/end-users",
+    icon: User,
+    roles: ["admin"],
+  },
+  {
     title: "Cases",
     href: "/admin/cases",
     icon: Briefcase,
@@ -179,6 +185,12 @@ const navItems: NavItem[] = [
     title: "Profile",
     href: "/employee/profile",
     icon: User,
+    roles: ["employee"],
+  },
+  {
+    title: "End Users",
+    href: "/employee/end-users",
+    icon: Users,
     roles: ["employee"],
   },
   // End User nav items

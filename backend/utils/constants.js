@@ -22,7 +22,23 @@ module.exports = {
   SOURCE_TAGS: {
     SELF: 'self',
     AGENT: 'agent',
-    ADMIN_DIRECT: 'admin_direct'
+    ASSOCIATE: 'associate',
+    ADMIN_DIRECT: 'admin_direct',
+    EMPLOYEE: 'employee'
+  },
+  ENROLLMENT_TYPES: {
+    SELF: 'self',
+    ADMIN: 'admin',
+    EMPLOYEE: 'employee',
+    AGENT: 'agent',
+    ASSOCIATE: 'associate'
+  },
+  LEAD_STATUS: {
+    LEAD: 'lead',
+    CONTACTED: 'contacted',
+    INTERESTED: 'interested',
+    CONVERTED: 'converted',
+    LOST: 'lost'
   },
   NOTIFICATION_TYPES: {
     EMAIL: 'email',

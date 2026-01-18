@@ -13,7 +13,11 @@ const {
   updateProfile,
   updateChecklistProgress,
   getRequiredDocuments,
-  getTimeline
+  getTimeline,
+  getEndUsers,
+  getServices,
+  enrollUserInService,
+  createEndUser
 } = require('../controllers/employeeController');
 const { employeeAuth } = require('../middleware/employeeAuth');
 
@@ -35,5 +39,11 @@ router.put('/notifications/:id/read', markNotificationAsRead);
 router.put('/notifications/read-all', markAllNotificationsAsRead);
 router.get('/profile', getProfile);
 router.put('/profile', updateProfile);
+
+// End User Management routes
+router.get('/end-users', getEndUsers);
+router.get('/services', getServices);
+router.post('/users', createEndUser);  // Create new end user
+router.post('/enroll', enrollUserInService);  // Enroll existing user
 
 module.exports = router;

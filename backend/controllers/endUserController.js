@@ -201,21 +201,26 @@ exports.verifyPayment = async (req, res, next) => {
       });
     }
 
-    // Create case
+    // Create case with audit trail
     const caseItem = await Case.create({
       caseId: `CASE-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`.toUpperCase(),
       endUserId: req.user.id,
       serviceId,
       status: constants.CASE_STATUS.NEW,
-      deadline: new Date(Date.now() + (service.slaHours || 24) * 60 * 60 * 1000)
+      deadline: new Date(Date.now() + (service.slaHours || 24) * 60 * 60 * 1000),
+      // Audit trail - self onboarding
+      enrolledBy: req.user.id,
+      enrollmentType: constants.ENROLLMENT_TYPES.SELF,
+      enrolledAt: new Date()
     });
 
     // Prepare payment data
     const paymentData = {
       caseId: caseItem._id,
       transactionId: razorpay_payment_id,
-      paymentMethod: 'razorpay',
-      status: 'completed'
+      paymentMethod: isTestMode ? 'test_payment' : 'razorpay',
+      status: 'completed',
+      paymentDate: new Date()
     };
 
     // If coupon was used, add discount information
@@ -468,13 +473,24 @@ exports.getPayments = async (req, res, next) => {
     const endUserId = req.user.id;
     const { page = 1, limit = 10 } = req.query;
 
-    // Get user's cases
-    const cases = await Case.find({ endUserId });
+    // Get user details
+    const user = await User.findById(endUserId).select('name email phone');
+
+    // Get user's cases with service details
+    const cases = await Case.find({ endUserId })
+      .populate('serviceId', 'name type description price duration');
 
     const payments = await Payment.find({
       caseId: { $in: cases.map(c => c._id) }
     })
-      .populate('caseId', 'caseId')
+      .populate({
+        path: 'caseId',
+        select: 'caseId serviceId endUserId',
+        populate: [
+          { path: 'serviceId', select: 'name type description price duration' },
+          { path: 'endUserId', select: 'name email phone' }
+        ]
+      })
       .skip((page - 1) * limit)
       .limit(parseInt(limit))
       .sort({ paymentDate: -1 });
@@ -491,7 +507,101 @@ exports.getPayments = async (req, res, next) => {
         limit: parseInt(limit),
         total
       },
+      user: user,
       data: payments
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Get single payment receipt data
+// @route   GET /api/enduser/payments/:id/receipt
+// @access  Private/End User
+exports.getPaymentReceipt = async (req, res, next) => {
+  try {
+    const endUserId = req.user.id;
+
+    // Get user details
+    const user = await User.findById(endUserId).select('name email phone');
+
+    // Get payment with full details
+    const payment = await Payment.findById(req.params.id)
+      .populate({
+        path: 'caseId',
+        select: 'caseId serviceId endUserId createdAt',
+        populate: [
+          { path: 'serviceId', select: 'name type description price duration documentsRequired' },
+          { path: 'endUserId', select: 'name email phone' }
+        ]
+      });
+
+    if (!payment) {
+      return res.status(404).json({
+        success: false,
+        error: 'Payment not found'
+      });
+    }
+
+    // Verify the payment belongs to this user
+    if (payment.caseId.endUserId._id.toString() !== endUserId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Not authorized to access this payment'
+      });
+    }
+
+    // Prepare receipt data
+    const receiptData = {
+      invoiceNumber: payment.invoiceNumber,
+      paymentDate: payment.paymentDate,
+      transactionId: payment.transactionId,
+      paymentMethod: payment.paymentMethod,
+      status: payment.status,
+
+      // Amount details
+      originalAmount: payment.originalAmount || payment.amount,
+      discountAmount: payment.discountAmount || 0,
+      discountPercentage: payment.discountPercentage || 0,
+      couponCode: payment.couponCode || null,
+      finalAmount: payment.amount,
+
+      // User details
+      customer: {
+        name: payment.caseId.endUserId.name,
+        email: payment.caseId.endUserId.email,
+        phone: payment.caseId.endUserId.phone
+      },
+
+      // Service details
+      service: {
+        name: payment.caseId.serviceId.name,
+        type: payment.caseId.serviceId.type,
+        description: payment.caseId.serviceId.description,
+        price: payment.caseId.serviceId.price,
+        duration: payment.caseId.serviceId.duration
+      },
+
+      // Case details
+      caseInfo: {
+        caseId: payment.caseId.caseId,
+        createdAt: payment.caseId.createdAt
+      },
+
+      // Company details (can be configured)
+      company: {
+        name: 'LN Services',
+        tagline: 'Professional Legal & Business Services',
+        address: 'India',
+        email: 'support@lnservices.com',
+        phone: '+91 XXXXXXXXXX',
+        website: 'www.lnservices.com'
+      }
+    };
+
+    res.status(200).json({
+      success: true,
+      data: receiptData
     });
   } catch (err) {
     next(err);

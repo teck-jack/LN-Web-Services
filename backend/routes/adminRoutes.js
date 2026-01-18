@@ -21,7 +21,10 @@ const {
   getTimeline,
   getNotifications,
   markNotificationAsRead,
-  markAllNotificationsAsRead
+  markAllNotificationsAsRead,
+  getEndUsers,
+  enrollUserInService,
+  checkActiveEnrollment
 } = require('../controllers/adminController');
 const { adminAuth } = require('../middleware/adminAuth');
 
@@ -53,5 +56,10 @@ router.get('/reports', getReports);
 router.get('/notifications', getNotifications);
 router.put('/notifications/:id/read', markNotificationAsRead);
 router.put('/notifications/read-all', markAllNotificationsAsRead);
+
+// End User Enrollment routes
+router.get('/end-users', getEndUsers);
+router.post('/enroll', enrollUserInService);
+router.get('/check-enrollment/:userId/:serviceId', checkActiveEnrollment);
 
 module.exports = router;

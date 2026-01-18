@@ -263,4 +263,32 @@ export const adminService = {
       throw new Error(error.response?.data?.error || "Failed to mark all notifications as read");
     }
   },
+
+  // End User Management
+  async getEndUsers(params: { page?: number; limit?: number; search?: string; sourceTag?: string; hasCase?: string }) {
+    try {
+      const response = await api.get('/admin/end-users', { params });
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || "Failed to fetch end users");
+    }
+  },
+
+  async enrollUserInService(data: { userId: string; serviceId: string; notes?: string; employeeId?: string }) {
+    try {
+      const response = await api.post('/admin/enroll', data);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || "Failed to enroll user");
+    }
+  },
+
+  async checkActiveEnrollment(userId: string, serviceId: string) {
+    try {
+      const response = await api.get(`/admin/check-enrollment/${userId}/${serviceId}`);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || "Failed to check enrollment status");
+    }
+  },
 };
