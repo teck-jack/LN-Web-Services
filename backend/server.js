@@ -17,7 +17,7 @@ app.use(express.json());
 
 // Enable CORS
 app.use(cors({
-  origin: ['http://localhost:8080', 'https://indianlegalfiling.com', 'https://www.indianlegalfiling.com'],
+  origin: ['http://localhost:8080', 'https://indianlegalfiling.com', 'https://www.indianlegalfiling.com', 'https://ln-web-services-6.onrender.com'],
   credentials: true, // Often needed when using cookies or authorization headers
 }));
 
