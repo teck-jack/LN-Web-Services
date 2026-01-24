@@ -64,17 +64,22 @@ export default function ServiceManagement() {
       };
 
       if (editingService) {
-        await adminService.updateService(editingService._id, payload);
+        // Update existing service - optimistic update
+        const response = await adminService.updateService(editingService._id, payload);
+        setServices(services.map(svc =>
+          svc._id === editingService._id ? { ...svc, ...response.data } : svc
+        ));
         toast.success("Service updated successfully");
       } else {
-        await adminService.createService(payload);
+        // Create new service - optimistic update
+        const response = await adminService.createService(payload);
+        setServices([response.data, ...services]);
         toast.success("Service created successfully");
       }
 
       setIsDialogOpen(false);
       setEditingService(null);
       resetForm();
-      fetchServices();
     } catch (error: any) {
       toast.error(error.message || (editingService ? "Failed to update service" : "Failed to create service"));
     }
@@ -96,12 +101,17 @@ export default function ServiceManagement() {
 
   const handleDelete = async (serviceId: string) => {
     if (!confirm("Are you sure you want to delete this service?")) return;
+    const previousServices = [...services];
+
+    // Optimistic update - remove from UI immediately
+    setServices(services.filter(svc => svc._id !== serviceId));
 
     try {
       await adminService.deleteService(serviceId);
       toast.success("Service deleted successfully");
-      fetchServices();
     } catch (error: any) {
+      // Rollback on error
+      setServices(previousServices);
       toast.error(error.message || "Failed to delete service");
     }
   };

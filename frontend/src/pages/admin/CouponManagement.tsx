@@ -74,11 +74,13 @@ export default function CouponManagement() {
 
         try {
             setSubmitting(true);
-            await couponService.createCoupon(newCoupon);
+            const response = await couponService.createCoupon(newCoupon);
+            // Optimistic update - add new coupon to list
+            setCoupons([response.data, ...coupons]);
+            setPagination(prev => ({ ...prev, total: prev.total + 1 }));
             toast.success("Coupon created successfully");
             setShowCreateDialog(false);
             resetForm();
-            fetchCoupons();
         } catch (error: any) {
             toast.error(error.message || "Failed to create coupon");
         } finally {
@@ -90,12 +92,17 @@ export default function CouponManagement() {
         if (!confirm(`Are you sure you want to deactivate coupon "${code}"?`)) {
             return;
         }
+        const previousCoupons = [...coupons];
+
+        // Optimistic update - mark as inactive immediately
+        setCoupons(coupons.map(c => c._id === id ? { ...c, isActive: false } : c));
 
         try {
             await couponService.deleteCoupon(id);
             toast.success("Coupon deactivated successfully");
-            fetchCoupons();
         } catch (error: any) {
+            // Rollback on error
+            setCoupons(previousCoupons);
             toast.error(error.message || "Failed to deactivate coupon");
         }
     };

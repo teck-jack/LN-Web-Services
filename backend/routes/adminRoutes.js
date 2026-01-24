@@ -4,14 +4,21 @@ const {
   getUsers,
   getUser,
   createUser,
+  activateUser,
+  deactivateUser,
+  deleteUser,
   createEmployee,
   updateEmployee,
+  deleteEmployee,
   createAgent,
   updateAgent,
+  deleteAgent,
+  deleteAssociate,
   getCases,
   getCase,
   assignCase,
   autoAssignCases,
+  deleteCase,
   createService,
   updateService,
   getServices,
@@ -36,16 +43,23 @@ router.get('/dashboard', getDashboard);
 router.get('/users', getUsers);
 router.post('/users', createUser);
 router.get('/users/:id', getUser);
+router.patch('/users/:id/activate', activateUser);
+router.patch('/users/:id/deactivate', deactivateUser);
+router.delete('/users/:id', deleteUser);
 router.post('/employees', createEmployee);
 router.put('/employees/:id', updateEmployee);
+router.delete('/employees/:id', deleteEmployee);
 router.post('/agents', createAgent);
 router.put('/agents/:id', updateAgent);
+router.delete('/agents/:id', deleteAgent);
+router.delete('/associates/:id', deleteAssociate);
 router.get('/cases', getCases);
 router.get('/cases/:id', getCase);
 router.get('/cases/:id/required-documents', getRequiredDocuments);
 router.post('/cases/:id/notes', addNote);
 router.get('/cases/:id/timeline', getTimeline);
 router.put('/cases/:id/assign', assignCase);
+router.delete('/cases/:id', deleteCase);
 router.post('/cases/auto-assign', autoAssignCases);
 router.post('/services', createService);
 router.put('/services/:id', updateService);

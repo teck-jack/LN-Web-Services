@@ -87,8 +87,14 @@ export default function CaseDetails() {
     if (!noteText.trim() || !id) return;
     try {
       setIsAddingNote(true);
-      await employeeService.addNote(id, { text: noteText });
-      loadCase();
+      const response = await employeeService.addNote(id, { text: noteText });
+      // Optimistic update - add note to Redux state
+      if (caseData) {
+        dispatch(updateCase({
+          ...caseData,
+          notes: [...(caseData.notes || []), response.data.note]
+        }));
+      }
       setNoteText("");
       setShowNoteDialog(false);
       toast.success("Note added successfully");
@@ -130,7 +136,14 @@ export default function CaseDetails() {
         currentStep: newStep,
         note: statusNote.trim() || undefined,
       });
-      loadCase();
+      // Optimistic update - update Redux state
+      if (caseData) {
+        dispatch(updateCase({
+          ...caseData,
+          status: newStatus,
+          currentStep: newStep
+        }));
+      }
       setStatusNote("");
       setShowStatusDialog(false);
       toast.success("Case status updated successfully");
@@ -382,8 +395,8 @@ export default function CaseDetails() {
                 onOpenChange={setShowBulkUploadDialog}
                 onComplete={(results) => {
                   console.log('Bulk upload complete:', results);
-                  loadCase();
-                  fetchRequiredDocuments();
+                  // Optimistic - DocumentVersionManager components will reload themselves
+                  // No need to refetch everything
                 }}
               />
             </CardContent>

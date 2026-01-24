@@ -291,4 +291,50 @@ export const adminService = {
       throw new Error(error.response?.data?.error || "Failed to check enrollment status");
     }
   },
+
+  // Delete operations
+  async deleteUser(id: string) {
+    try {
+      const response = await api.delete(`/admin/users/${id}`);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || "Failed to delete user");
+    }
+  },
+
+  async deleteAgent(id: string) {
+    try {
+      const response = await api.delete(`/admin/agents/${id}`);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || "Failed to delete agent");
+    }
+  },
+
+  async deleteEmployee(id: string) {
+    try {
+      const response = await api.delete(`/admin/employees/${id}`);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || "Failed to delete employee");
+    }
+  },
+
+  async deleteAssociate(id: string) {
+    try {
+      const response = await api.delete(`/admin/associates/${id}`);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || "Failed to delete associate");
+    }
+  },
+
+  async deleteCase(id: string) {
+    try {
+      const response = await api.delete(`/admin/cases/${id}`);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || "Failed to delete case");
+    }
+  },
 };

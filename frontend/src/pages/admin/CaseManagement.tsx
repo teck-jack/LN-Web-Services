@@ -4,9 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DataTable, Column } from "@/components/common/DataTable";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { adminService } from "@/services/adminService";
 import { toast } from "sonner";
-import { Zap } from "lucide-react";
+import { Zap, Trash2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface Case {
@@ -34,6 +35,10 @@ export default function CaseManagement() {
   const [loading, setLoading] = useState(false);
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0 });
   const [filters, setFilters] = useState({ status: 'all', search: '' });
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; caseItem: Case | null }>({
+    open: false,
+    caseItem: null,
+  });
 
   useEffect(() => {
     fetchCases();
@@ -68,6 +73,27 @@ export default function CaseManagement() {
       fetchCases();
     } catch (error: any) {
       toast.error(error.message || "Failed to auto-assign cases");
+    }
+  };
+
+  const handleDeleteCase = async () => {
+    if (!deleteConfirm.caseItem) return;
+    const deletedCaseId = deleteConfirm.caseItem._id;
+    const previousCases = [...cases];
+
+    // Optimistic update - remove from UI immediately
+    setCases(cases.filter(c => c._id !== deletedCaseId));
+    setPagination(prev => ({ ...prev, total: prev.total - 1 }));
+    setDeleteConfirm({ open: false, caseItem: null });
+
+    try {
+      await adminService.deleteCase(deletedCaseId);
+      toast.success("Case deleted successfully");
+    } catch (error: any) {
+      // Rollback on error
+      setCases(previousCases);
+      setPagination(prev => ({ ...prev, total: prev.total + 1 }));
+      toast.error(error.message || "Failed to delete case");
     }
   };
 
@@ -145,14 +171,22 @@ export default function CaseManagement() {
       accessor: "_id",
       mobileLabel: "Action",
       cell: (row) => (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => navigate(`/admin/cases/${row._id}`)}
-          className="w-full md:w-auto"
-        >
-          View Details
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate(`/admin/cases/${row._id}`)}
+          >
+            View
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setDeleteConfirm({ open: true, caseItem: row })}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
       ),
     },
   ];
@@ -216,7 +250,24 @@ export default function CaseManagement() {
           />
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteConfirm.open} onOpenChange={(open) => setDeleteConfirm({ open, caseItem: open ? deleteConfirm.caseItem : null })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Case</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to permanently delete case <strong>{deleteConfirm.caseItem?.caseId}</strong>? This will also delete all related payments, documents, and notifications. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteCase} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
-

@@ -171,8 +171,8 @@ export default function CaseDetails() {
                 onOpenChange={setShowBulkUploadDialog}
                 onComplete={(results) => {
                   console.log('Bulk upload complete:', results);
-                  dispatch(getCase(id!));
-                  fetchRequiredDocuments();
+                  // Optimistic - DocumentVersionManager components will reload themselves
+                  // No need to refetch everything
                 }}
               />
             </TabsContent>

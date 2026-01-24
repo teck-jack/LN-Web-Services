@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DataTable, Column } from "@/components/common/DataTable";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/common/Input";
 import { adminService } from "@/services/adminService";
 import { toast } from "sonner";
-import { UserPlus, Edit } from "lucide-react";
+import { UserPlus, Edit, Trash2, Shield, ShieldOff } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface Employee {
@@ -35,6 +36,10 @@ export default function EmployeeManagement() {
     password: "",
     phone: "",
     assignedModules: [] as string[],
+  });
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; employee: Employee | null }>({
+    open: false,
+    employee: null,
   });
 
   useEffect(() => {
@@ -66,16 +71,22 @@ export default function EmployeeManagement() {
     e.preventDefault();
     try {
       if (editingEmployee) {
-        await adminService.updateEmployee(editingEmployee._id, formData);
+        // Update existing employee - optimistic update
+        const response = await adminService.updateEmployee(editingEmployee._id, formData);
+        setEmployees(employees.map(emp =>
+          emp._id === editingEmployee._id ? { ...emp, ...response.data } : emp
+        ));
         toast.success("Employee updated successfully");
       } else {
-        await adminService.createEmployee(formData);
+        // Create new employee - optimistic update
+        const response = await adminService.createEmployee(formData);
+        setEmployees([response.data, ...employees]);
+        setPagination(prev => ({ ...prev, total: prev.total + 1 }));
         toast.success("Employee created successfully");
       }
       setIsDialogOpen(false);
       setEditingEmployee(null);
       setFormData({ name: "", email: "", password: "", phone: "", assignedModules: [] });
-      fetchEmployees();
     } catch (error: any) {
       toast.error(error.message || (editingEmployee ? "Failed to update employee" : "Failed to create employee"));
     }
@@ -100,6 +111,50 @@ export default function EmployeeManagement() {
         ? prev.assignedModules.filter(m => m !== module)
         : [...prev.assignedModules, module]
     }));
+  };
+
+  const handleToggleStatus = async (employee: Employee) => {
+    const previousEmployees = [...employees];
+
+    // Optimistic update - toggle status immediately
+    setEmployees(employees.map(emp =>
+      emp._id === employee._id ? { ...emp, isActive: !emp.isActive } : emp
+    ));
+
+    try {
+      if (employee.isActive) {
+        await adminService.deactivateUser(employee._id);
+        toast.success("Employee deactivated successfully");
+      } else {
+        await adminService.activateUser(employee._id);
+        toast.success("Employee activated successfully");
+      }
+    } catch (error: any) {
+      // Rollback on error
+      setEmployees(previousEmployees);
+      toast.error(error.message || "Failed to update employee status");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteConfirm.employee) return;
+    const deletedEmployeeId = deleteConfirm.employee._id;
+    const previousEmployees = [...employees];
+
+    // Optimistic update - remove from UI immediately
+    setEmployees(employees.filter(emp => emp._id !== deletedEmployeeId));
+    setPagination(prev => ({ ...prev, total: prev.total - 1 }));
+    setDeleteConfirm({ open: false, employee: null });
+
+    try {
+      await adminService.deleteEmployee(deletedEmployeeId);
+      toast.success("Employee deleted successfully");
+    } catch (error: any) {
+      // Rollback on error
+      setEmployees(previousEmployees);
+      setPagination(prev => ({ ...prev, total: prev.total + 1 }));
+      toast.error(error.message || "Failed to delete employee");
+    }
   };
 
   const columns: Column<Employee>[] = [
@@ -136,10 +191,39 @@ export default function EmployeeManagement() {
       header: "Actions",
       accessor: "_id",
       cell: (row) => (
-        <Button variant="outline" size="sm" onClick={() => handleEdit(row)} className="gap-2">
-          <Edit className="h-4 w-4" />
-          Edit
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => handleEdit(row)} className="gap-1">
+            <Edit className="h-4 w-4" />
+            <span className="hidden sm:inline">Edit</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleToggleStatus(row)}
+            className="gap-1"
+          >
+            {row.isActive ? (
+              <>
+                <ShieldOff className="h-4 w-4" />
+                <span className="hidden sm:inline">Deactivate</span>
+              </>
+            ) : (
+              <>
+                <Shield className="h-4 w-4" />
+                <span className="hidden sm:inline">Activate</span>
+              </>
+            )}
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setDeleteConfirm({ open: true, employee: row })}
+            className="gap-1"
+          >
+            <Trash2 className="h-4 w-4" />
+            <span className="hidden sm:inline">Delete</span>
+          </Button>
+        </div>
       ),
     },
   ];
@@ -245,6 +329,24 @@ export default function EmployeeManagement() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteConfirm.open} onOpenChange={(open) => setDeleteConfirm({ open, employee: open ? deleteConfirm.employee : null })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Employee</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to permanently delete <strong>{deleteConfirm.employee?.name}</strong>? This will unassign all their cases and remove the employee from the database. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

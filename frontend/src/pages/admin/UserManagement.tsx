@@ -4,11 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DataTable, Column } from "@/components/common/DataTable";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { adminService } from "@/services/adminService";
 import { toast } from "sonner";
-import { UserPlus, Shield, ShieldOff } from "lucide-react";
+import { UserPlus, Shield, ShieldOff, Trash2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface User {
@@ -35,6 +36,10 @@ export default function UserManagement() {
     password: '',
     role: 'end_user',
     phone: '',
+  });
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; user: User | null }>({
+    open: false,
+    user: null,
   });
 
   useEffect(() => {
@@ -65,6 +70,13 @@ export default function UserManagement() {
   };
 
   const handleToggleStatus = async (userId: string, isActive: boolean) => {
+    const previousUsers = [...users];
+
+    // Optimistic update - toggle status immediately
+    setUsers(users.map(u =>
+      u._id === userId ? { ...u, isActive: !isActive } : u
+    ));
+
     try {
       if (isActive) {
         await adminService.deactivateUser(userId);
@@ -73,8 +85,9 @@ export default function UserManagement() {
         await adminService.activateUser(userId);
         toast.success("User activated successfully");
       }
-      fetchUsers();
     } catch (error: any) {
+      // Rollback on error
+      setUsers(previousUsers);
       toast.error(error.message || "Failed to update user status");
     }
   };
@@ -87,21 +100,44 @@ export default function UserManagement() {
 
     try {
       setSubmitting(true);
-      await adminService.createUser({
+      const response = await adminService.createUser({
         name: newUser.name,
         email: newUser.email,
         password: newUser.password,
         role: newUser.role,
         phone: newUser.phone || undefined,
       });
+      // Optimistic update - add new user to list
+      setUsers([response.data, ...users]);
+      setPagination(prev => ({ ...prev, total: prev.total + 1 }));
       toast.success("User created successfully");
       setShowAddDialog(false);
       setNewUser({ name: '', email: '', password: '', role: 'end_user', phone: '' });
-      fetchUsers();
     } catch (error: any) {
       toast.error(error.message || "Failed to create user");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteConfirm.user) return;
+    const deletedUserId = deleteConfirm.user._id;
+    const previousUsers = [...users];
+
+    // Optimistic update - remove from UI immediately
+    setUsers(users.filter(u => u._id !== deletedUserId));
+    setPagination(prev => ({ ...prev, total: prev.total - 1 }));
+    setDeleteConfirm({ open: false, user: null });
+
+    try {
+      await adminService.deleteUser(deletedUserId);
+      toast.success("User deleted successfully");
+    } catch (error: any) {
+      // Rollback on error
+      setUsers(previousUsers);
+      setPagination(prev => ({ ...prev, total: prev.total + 1 }));
+      toast.error(error.message || "Failed to delete user");
     }
   };
 
@@ -153,24 +189,35 @@ export default function UserManagement() {
       header: "Actions",
       accessor: "_id",
       cell: (row) => (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => handleToggleStatus(row._id, row.isActive)}
-          className="gap-2"
-        >
-          {row.isActive ? (
-            <>
-              <ShieldOff className="h-4 w-4" />
-              Deactivate
-            </>
-          ) : (
-            <>
-              <Shield className="h-4 w-4" />
-              Activate
-            </>
-          )}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleToggleStatus(row._id, row.isActive)}
+            className="gap-1"
+          >
+            {row.isActive ? (
+              <>
+                <ShieldOff className="h-4 w-4" />
+                <span className="hidden sm:inline">Deactivate</span>
+              </>
+            ) : (
+              <>
+                <Shield className="h-4 w-4" />
+                <span className="hidden sm:inline">Activate</span>
+              </>
+            )}
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setDeleteConfirm({ open: true, user: row })}
+            className="gap-1"
+          >
+            <Trash2 className="h-4 w-4" />
+            <span className="hidden sm:inline">Delete</span>
+          </Button>
+        </div>
       ),
     },
   ];
@@ -321,6 +368,24 @@ export default function UserManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteConfirm.open} onOpenChange={(open) => setDeleteConfirm({ open, user: open ? deleteConfirm.user : null })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete User</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to permanently delete <strong>{deleteConfirm.user?.name}</strong>? This action will remove the user from the database and cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { DataTable, Column } from "@/components/common/DataTable";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { UserPlus, Users, Eye, Briefcase, Filter, UserCheck, Building2, CreditCard } from "lucide-react";
+import { UserPlus, Users, Eye, Briefcase, Filter, UserCheck, Building2, CreditCard, Trash2 } from "lucide-react";
 import { adminService } from "@/services/adminService";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { toast } from "sonner";
@@ -18,6 +18,16 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
     Select,
     SelectContent,
@@ -94,6 +104,12 @@ export default function EndUsers() {
 
     // Payment Dialog State
     const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+
+    // Delete Dialog State
+    const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; user: EndUser | null }>({
+        open: false,
+        user: null,
+    });
 
     useEffect(() => {
         loadUsers();
@@ -190,6 +206,18 @@ export default function EndUsers() {
         toast.success(`${selectedUser?.name} has been enrolled successfully!`);
         setPaymentDialogOpen(false);
         loadUsers(); // Refresh to update case counts
+    };
+
+    const handleDeleteUser = async () => {
+        if (!deleteConfirm.user) return;
+        try {
+            await adminService.deleteUser(deleteConfirm.user._id);
+            toast.success("End user deleted successfully");
+            setDeleteConfirm({ open: false, user: null });
+            loadUsers();
+        } catch (error) {
+            toast.error("Failed to delete end user");
+        }
     };
 
     const getSourceBadge = (sourceTag: string, agentName?: string) => {
@@ -320,6 +348,14 @@ export default function EndUsers() {
                     >
                         <UserPlus className="h-4 w-4 mr-1" />
                         <span className="hidden sm:inline">Enroll</span>
+                    </Button>
+                    <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => setDeleteConfirm({ open: true, user: row })}
+                    >
+                        <Trash2 className="h-4 w-4" />
+                        <span className="hidden sm:inline ml-1">Delete</span>
                     </Button>
                 </div>
             ),
@@ -574,6 +610,24 @@ export default function EndUsers() {
                 endUserPhone={selectedUser?.phone}
                 onSuccess={handlePaymentSuccess}
             />
+
+            {/* Delete Confirmation Dialog */}
+            <AlertDialog open={deleteConfirm.open} onOpenChange={(open) => setDeleteConfirm({ open, user: open ? deleteConfirm.user : null })}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete End User</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to permanently delete <strong>{deleteConfirm.user?.name}</strong>? This action will remove the user from the database and cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteUser} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

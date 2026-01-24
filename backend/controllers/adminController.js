@@ -1127,3 +1127,234 @@ exports.checkActiveEnrollment = async (req, res, next) => {
     next(err);
   }
 };
+
+// @desc    Activate user
+// @route   PATCH /api/admin/users/:id/activate
+// @access  Private/Admin
+exports.activateUser = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    user.isActive = true;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'User activated successfully',
+      data: user
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Deactivate user
+// @route   PATCH /api/admin/users/:id/deactivate
+// @access  Private/Admin
+exports.deactivateUser = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    // Prevent deactivating yourself
+    if (user._id.toString() === req.user.id) {
+      return res.status(400).json({
+        success: false,
+        error: 'Cannot deactivate your own account'
+      });
+    }
+
+    user.isActive = false;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'User deactivated successfully',
+      data: user
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Delete user (hard delete)
+// @route   DELETE /api/admin/users/:id
+// @access  Private/Admin
+exports.deleteUser = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    // Prevent deleting yourself
+    if (user._id.toString() === req.user.id) {
+      return res.status(400).json({
+        success: false,
+        error: 'Cannot delete your own account'
+      });
+    }
+
+    // Hard delete - permanently remove from database
+    await User.findByIdAndDelete(req.params.id);
+
+    res.status(200).json({
+      success: true,
+      message: 'User deleted permanently'
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Delete agent (hard delete)
+// @route   DELETE /api/admin/agents/:id
+// @access  Private/Admin
+exports.deleteAgent = async (req, res, next) => {
+  try {
+    const agent = await User.findOne({
+      _id: req.params.id,
+      role: constants.USER_ROLES.AGENT
+    });
+
+    if (!agent) {
+      return res.status(404).json({
+        success: false,
+        error: 'Agent not found'
+      });
+    }
+
+    // Remove agent reference from users onboarded by this agent
+    await User.updateMany(
+      { agentId: agent._id },
+      { $unset: { agentId: 1 } }
+    );
+
+    // Hard delete - permanently remove from database
+    await User.findByIdAndDelete(req.params.id);
+
+    res.status(200).json({
+      success: true,
+      message: 'Agent deleted permanently'
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Delete employee (hard delete)
+// @route   DELETE /api/admin/employees/:id
+// @access  Private/Admin
+exports.deleteEmployee = async (req, res, next) => {
+  try {
+    const employee = await User.findOne({
+      _id: req.params.id,
+      role: constants.USER_ROLES.EMPLOYEE
+    });
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        error: 'Employee not found'
+      });
+    }
+
+    // Unassign cases from this employee before deleting
+    await Case.updateMany(
+      { employeeId: employee._id },
+      { $unset: { employeeId: 1, assignedAt: 1 } }
+    );
+
+    // Hard delete - permanently remove from database
+    await User.findByIdAndDelete(req.params.id);
+
+    res.status(200).json({
+      success: true,
+      message: 'Employee deleted permanently'
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Delete associate (hard delete)
+// @route   DELETE /api/admin/associates/:id
+// @access  Private/Admin
+exports.deleteAssociate = async (req, res, next) => {
+  try {
+    const associate = await User.findOne({
+      _id: req.params.id,
+      role: constants.USER_ROLES.ASSOCIATE
+    });
+
+    if (!associate) {
+      return res.status(404).json({
+        success: false,
+        error: 'Associate not found'
+      });
+    }
+
+    // Hard delete - permanently remove from database
+    await User.findByIdAndDelete(req.params.id);
+
+    res.status(200).json({
+      success: true,
+      message: 'Associate deleted permanently'
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Delete case (hard delete)
+// @route   DELETE /api/admin/cases/:id
+// @access  Private/Admin
+exports.deleteCase = async (req, res, next) => {
+  try {
+    const caseItem = await Case.findById(req.params.id);
+
+    if (!caseItem) {
+      return res.status(404).json({
+        success: false,
+        error: 'Case not found'
+      });
+    }
+
+    // Delete related payments
+    await Payment.deleteMany({ caseId: caseItem._id });
+
+    // Delete related notifications
+    await Notification.deleteMany({ relatedCaseId: caseItem._id });
+
+    // Delete related document versions
+    await DocumentVersion.deleteMany({ caseId: caseItem._id });
+
+    // Hard delete - permanently remove case from database
+    await Case.findByIdAndDelete(req.params.id);
+
+    res.status(200).json({
+      success: true,
+      message: 'Case deleted permanently'
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
