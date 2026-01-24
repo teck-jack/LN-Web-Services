@@ -34,6 +34,8 @@ Thumbs.db
 # Coverage reports
 coverage/
 
-# Optional lock files
-/package-lock.json
-/yarn.lock
+
+# Uploaded files
+uploads/
+
+
