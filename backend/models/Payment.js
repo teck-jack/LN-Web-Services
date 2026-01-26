@@ -18,7 +18,45 @@ const PaymentSchema = new mongoose.Schema({
   },
   paymentMethod: {
     type: String,
+    enum: [
+      'razorpay',           // Online payment via Razorpay
+      'cash',               // Cash payment (Admin/Employee only)
+      'test_payment',       // Test mode
+      'employee_enrollment', // Legacy - direct enrollment
+      'agent_enrollment'    // Legacy - agent enrollment
+    ],
     required: [true, 'Please add a payment method']
+  },
+  // Cash payment details (only for cash payments)
+  cashPaymentDetails: {
+    receivedBy: {
+      type: mongoose.Schema.ObjectId,
+      ref: 'User'  // Admin or Employee who received cash
+    },
+    receivedAt: {
+      type: Date
+    },
+    receiptNumber: {
+      type: String  // Manual receipt number if any
+    },
+    notes: {
+      type: String  // Additional notes about cash payment
+    }
+  },
+  // Payment metadata for audit trail
+  paymentMetadata: {
+    enrolledBy: {
+      type: mongoose.Schema.ObjectId,
+      ref: 'User'
+    },
+    enrollerRole: {
+      type: String,
+      enum: ['admin', 'employee', 'agent', 'associate', 'end_user']
+    },
+    paymentInitiatedFrom: {
+      type: String,
+      enum: ['admin_panel', 'employee_panel', 'end_user_portal', 'agent_portal', 'associate_portal']
+    }
   },
   status: {
     type: String,
@@ -82,8 +120,12 @@ PaymentSchema.pre('save', async function (next) {
   if (this.isNew && !this.invoiceNumber) {
     const year = new Date().getFullYear();
     const month = String(new Date().getMonth() + 1).padStart(2, '0');
-    const count = await this.constructor.countDocuments();
-    this.invoiceNumber = `INV-${year}${month}-${String(count + 1).padStart(6, '0')}`;
+    const timestamp = Date.now();
+    const randomSuffix = Math.random().toString(36).substring(2, 5).toUpperCase();
+
+    // Format: INV-YYYYMM-TIMESTAMP-RANDOM
+    // Example: INV-202601-1737877200000-A3F
+    this.invoiceNumber = `INV-${year}${month}-${timestamp}-${randomSuffix}`;
   }
   next();
 });

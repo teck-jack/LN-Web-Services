@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
     Dialog,
     DialogContent,
@@ -9,8 +9,11 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/common/Input";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import {
     CreditCard,
@@ -22,10 +25,14 @@ import {
     FileText,
     IndianRupee,
     Clock,
+    Banknote,
+    Wallet,
+    FlaskConical,
 } from "lucide-react";
 import { toast } from "sonner";
-import { paymentService } from "@/services/paymentService";
+import { paymentService, enrollmentService } from "@/services/paymentService";
 import { couponService } from "@/services/couponService";
+import { useAuth } from "@/context/AuthContext";
 
 interface Service {
     _id: string;
@@ -59,8 +66,11 @@ interface SuccessData {
         transactionId: string;
         amount: number;
         status: string;
+        paymentMethod?: string;
     };
 }
+
+type PaymentMethod = 'razorpay' | 'cash' | 'test_payment';
 
 export function PaymentDialog({
     open,
@@ -73,6 +83,8 @@ export function PaymentDialog({
     onSuccess,
     onCancel,
 }: PaymentDialogProps) {
+    const { user } = useAuth();
+    const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('razorpay');
     const [testMode, setTestMode] = useState(true);
     const [termsAccepted, setTermsAccepted] = useState(false);
     const [processing, setProcessing] = useState(false);
@@ -82,9 +94,46 @@ export function PaymentDialog({
     const [showSuccess, setShowSuccess] = useState(false);
     const [successData, setSuccessData] = useState<SuccessData | null>(null);
 
+    // Cash payment details
+    const [cashDetails, setCashDetails] = useState({
+        receiptNumber: "",
+        notes: ""
+    });
+
+    // Available payment methods based on user role
+    const availablePaymentMethods = useMemo(() => {
+        const methods = [
+            {
+                value: 'razorpay' as PaymentMethod,
+                label: 'Online Payment',
+                icon: CreditCard,
+                description: 'Secure payment via Razorpay'
+            },
+            {
+                value: 'test_payment' as PaymentMethod,
+                label: 'Test Mode',
+                icon: FlaskConical,
+                description: 'For testing (no real payment)'
+            }
+        ];
+
+        // Cash payment only for Admin and Employee
+        if (user?.role === 'admin' || user?.role === 'employee') {
+            methods.splice(1, 0, {
+                value: 'cash' as PaymentMethod,
+                label: 'Cash Payment',
+                icon: Banknote,
+                description: 'Record cash payment received'
+            });
+        }
+
+        return methods;
+    }, [user?.role]);
+
     // Reset state when dialog opens/closes
     useEffect(() => {
         if (open) {
+            setPaymentMethod('razorpay');
             setTestMode(true);
             setTermsAccepted(false);
             setProcessing(false);
@@ -92,6 +141,7 @@ export function PaymentDialog({
             setAppliedCoupon(null);
             setShowSuccess(false);
             setSuccessData(null);
+            setCashDetails({ receiptNumber: "", notes: "" });
         }
     }, [open]);
 
@@ -135,18 +185,49 @@ export function PaymentDialog({
         try {
             setProcessing(true);
 
-            // Create payment order
-            const orderResponse = await paymentService.createOrder({
-                serviceId: service._id,
+            // Handle cash payment differently
+            if (paymentMethod === 'cash') {
+                const response = await enrollmentService.createEnrollment({
+                    endUserId,
+                    serviceId: service._id,
+                    paymentMethod: 'cash',
+                    cashDetails: {
+                        receiptNumber: cashDetails.receiptNumber || undefined,
+                        notes: cashDetails.notes || 'Cash payment received'
+                    },
+                    couponCode: appliedCoupon?.coupon?.code
+                });
+
+                if (response.success) {
+                    setSuccessData({
+                        case: response.data.case,
+                        payment: response.data.payment,
+                    });
+                    setShowSuccess(true);
+                    toast.success("Enrollment completed with cash payment!");
+                }
+                return;
+            }
+
+            // Handle Razorpay and Test Mode
+            const isTest = paymentMethod === 'test_payment' || testMode;
+
+            const enrollResponse = await enrollmentService.createEnrollment({
                 endUserId,
-                isTestMode: testMode,
-                couponCode: appliedCoupon?.coupon?.code,
+                serviceId: service._id,
+                paymentMethod: paymentMethod === 'test_payment' ? 'test_payment' : 'razorpay',
+                isTestMode: isTest,
+                couponCode: appliedCoupon?.coupon?.code
             });
 
-            const { order, discount, coupon } = orderResponse.data;
+            if (!enrollResponse.success || !enrollResponse.requiresPaymentVerification) {
+                throw new Error("Failed to create enrollment");
+            }
 
-            if (testMode) {
-                // Test payment
+            const { order, discount, coupon } = enrollResponse.data;
+
+            if (isTest) {
+                // Test payment - immediate verification
                 const verifyResponse = await paymentService.verifyEnrollment({
                     razorpay_order_id: order.id,
                     razorpay_payment_id: `test_pay_${Date.now()}`,
@@ -215,9 +296,9 @@ export function PaymentDialog({
                 return;
             }
         } catch (error: any) {
-            toast.error(error.response?.data?.error || "Payment failed");
+            toast.error(error.response?.data?.error || error.message || "Payment failed");
         } finally {
-            if (testMode) {
+            if (paymentMethod === 'cash' || paymentMethod === 'test_payment' || testMode) {
                 setProcessing(false);
             }
         }
@@ -281,6 +362,12 @@ export function PaymentDialog({
                                     </span>
                                 </div>
                                 <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Method</span>
+                                    <Badge variant="outline" className="capitalize">
+                                        {successData.payment.paymentMethod?.replace('_', ' ') || 'Razorpay'}
+                                    </Badge>
+                                </div>
+                                <div className="flex justify-between">
                                     <span className="text-muted-foreground">Status</span>
                                     <Badge variant="default" className="bg-green-600">
                                         {successData.payment.status}
@@ -337,27 +424,92 @@ export function PaymentDialog({
                         </div>
                     </div>
 
-                    {/* Test Mode Toggle */}
-                    <div className="flex items-center space-x-2 p-3 border rounded-lg bg-accent/50">
-                        <Checkbox
-                            id="test-mode"
-                            checked={testMode}
-                            onCheckedChange={(checked) => setTestMode(checked as boolean)}
-                        />
-                        <label htmlFor="test-mode" className="text-sm font-medium cursor-pointer">
-                            Test Mode (No real payment)
-                        </label>
+                    {/* Payment Method Selection */}
+                    <div className="space-y-3">
+                        <Label className="text-sm font-semibold">Select Payment Method</Label>
+                        <RadioGroup value={paymentMethod} onValueChange={(value) => setPaymentMethod(value as PaymentMethod)}>
+                            {availablePaymentMethods.map((method) => {
+                                const Icon = method.icon;
+                                return (
+                                    <div key={method.value} className="flex items-center space-x-3 border rounded-lg p-3 hover:bg-accent/50 cursor-pointer transition-colors">
+                                        <RadioGroupItem value={method.value} id={method.value} />
+                                        <Label htmlFor={method.value} className="flex items-center gap-3 cursor-pointer flex-1">
+                                            <Icon className="h-5 w-5 text-primary" />
+                                            <div className="flex-1">
+                                                <div className="font-medium">{method.label}</div>
+                                                <div className="text-xs text-muted-foreground">{method.description}</div>
+                                            </div>
+                                        </Label>
+                                    </div>
+                                );
+                            })}
+                        </RadioGroup>
                     </div>
 
-                    {testMode && (
-                        <div className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
-                            <div className="flex items-start gap-2">
-                                <CheckCircle2 className="h-4 w-4 text-blue-600 mt-0.5" />
-                                <p className="text-sm text-blue-700 dark:text-blue-300">
-                                    Test mode active. No real money will be charged.
-                                </p>
+                    {/* Cash Payment Details */}
+                    {paymentMethod === 'cash' && (
+                        <div className="space-y-3 p-4 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                            <div className="flex items-center gap-2 mb-2">
+                                <Wallet className="h-4 w-4 text-yellow-600" />
+                                <span className="font-semibold text-yellow-800 dark:text-yellow-200">Cash Payment Details</span>
+                            </div>
+                            <div>
+                                <Label htmlFor="receiptNumber" className="text-sm">Receipt Number (Optional)</Label>
+                                <Input
+                                    id="receiptNumber"
+                                    value={cashDetails.receiptNumber}
+                                    onChange={(e: any) => setCashDetails(prev => ({
+                                        ...prev,
+                                        receiptNumber: e.target.value
+                                    }))}
+                                    placeholder="e.g., RCP-2026-001"
+                                    className="mt-1"
+                                />
+                            </div>
+                            <div>
+                                <Label htmlFor="cashNotes" className="text-sm">Notes</Label>
+                                <Textarea
+                                    id="cashNotes"
+                                    value={cashDetails.notes}
+                                    onChange={(e: any) => setCashDetails(prev => ({
+                                        ...prev,
+                                        notes: e.target.value
+                                    }))}
+                                    placeholder="Add notes about the cash payment..."
+                                    rows={3}
+                                    className="mt-1"
+                                />
                             </div>
                         </div>
+                    )}
+
+                    {/* Test Mode Info for Razorpay/Test */}
+                    {(paymentMethod === 'razorpay' || paymentMethod === 'test_payment') && (
+                        <>
+                            {paymentMethod === 'razorpay' && (
+                                <div className="flex items-center space-x-2 p-3 border rounded-lg bg-accent/50">
+                                    <Checkbox
+                                        id="test-mode"
+                                        checked={testMode}
+                                        onCheckedChange={(checked) => setTestMode(checked as boolean)}
+                                    />
+                                    <label htmlFor="test-mode" className="text-sm font-medium cursor-pointer">
+                                        Test Mode (No real payment)
+                                    </label>
+                                </div>
+                            )}
+
+                            {(testMode || paymentMethod === 'test_payment') && (
+                                <div className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
+                                    <div className="flex items-start gap-2">
+                                        <CheckCircle2 className="h-4 w-4 text-blue-600 mt-0.5" />
+                                        <p className="text-sm text-blue-700 dark:text-blue-300">
+                                            Test mode active. No real money will be charged.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+                        </>
                     )}
 
                     {/* Coupon Code */}
@@ -453,8 +605,17 @@ export function PaymentDialog({
                             </>
                         ) : (
                             <>
-                                <CreditCard className="h-4 w-4 mr-2" />
-                                Pay ₹{prices.total.toLocaleString()}
+                                {paymentMethod === 'cash' ? (
+                                    <>
+                                        <Banknote className="h-4 w-4 mr-2" />
+                                        Complete Cash Enrollment
+                                    </>
+                                ) : (
+                                    <>
+                                        <CreditCard className="h-4 w-4 mr-2" />
+                                        Pay ₹{prices.total.toLocaleString()}
+                                    </>
+                                )}
                             </>
                         )}
                     </Button>

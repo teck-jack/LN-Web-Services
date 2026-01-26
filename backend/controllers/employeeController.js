@@ -800,50 +800,34 @@ exports.createEndUser = async (req, res, next) => {
       });
     }
 
-    // If serviceId is provided, enroll in service
-    let caseItem = null;
-    let payment = null;
+    // If serviceId is provided, return user info for payment flow
+    // Don't create case/payment here to avoid duplicate error
+    let serviceInfo = null;
 
     if (serviceId) {
       const service = await Service.findById(serviceId);
 
-      if (service && service.isActive) {
-        const caseCount = await Case.countDocuments();
-        const caseId = `CASE-${Date.now()}-${String(caseCount + 1).padStart(4, '0')}`;
-
-        caseItem = await Case.create({
-          caseId,
-          endUserId: endUser._id,
-          serviceId,
-          employeeId: employeeId,
-          status: constants.CASE_STATUS.NEW,
-          enrolledBy: employeeId,
-          enrollmentType: constants.ENROLLMENT_TYPES.EMPLOYEE,
-          enrolledAt: new Date()
-        });
-
-        // Create payment record
-        const transactionId = `EMP-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
-
-        payment = await Payment.create({
-          caseId: caseItem._id,
-          amount: service.price,
-          originalAmount: service.price,
-          transactionId,
-          paymentMethod: 'employee_enrollment',
-          status: 'completed',
-          paymentDate: Date.now()
-        });
-
-        // Notify end user about enrollment
-        await Notification.create({
-          recipientId: endUser._id,
-          type: constants.NOTIFICATION_TYPES.IN_APP,
-          title: 'Service Enrollment',
-          message: `You have been enrolled in ${service.name}. Our team will start processing your case shortly.`,
-          relatedCaseId: caseItem._id
+      if (!service) {
+        return res.status(404).json({
+          success: false,
+          error: 'Service not found'
         });
       }
+
+      if (!service.isActive) {
+        return res.status(400).json({
+          success: false,
+          error: 'Service is not active'
+        });
+      }
+
+      serviceInfo = {
+        id: service._id,
+        name: service.name,
+        type: service.type,
+        price: service.price,
+        duration: service.duration
+      };
     }
 
     res.status(201).json({
@@ -851,8 +835,8 @@ exports.createEndUser = async (req, res, next) => {
       message: 'User created successfully',
       data: {
         user: endUser,
-        case: caseItem,
-        payment: payment
+        service: serviceInfo,
+        requiresPayment: !!serviceId  // Flag to indicate payment is needed
       }
     });
   } catch (err) {

@@ -105,3 +105,35 @@ export const paymentService = {
         }).catch(options.onFailure);
     },
 };
+
+/**
+ * Enrollment Service
+ * Handles multi-channel enrollment (Razorpay, Cash, Test Mode)
+ */
+export const enrollmentService = {
+    /**
+     * Get available payment methods for current user
+     */
+    getPaymentMethods: async () => {
+        const response = await api.get('/enrollment/payment-methods');
+        return response.data;
+    },
+
+    /**
+     * Create enrollment with selected payment method
+     */
+    createEnrollment: async (data: {
+        endUserId?: string;
+        serviceId: string;
+        paymentMethod: 'razorpay' | 'cash' | 'test_payment';
+        cashDetails?: {
+            receiptNumber?: string;
+            notes?: string;
+        };
+        couponCode?: string;
+        isTestMode?: boolean;
+    }) => {
+        const response = await api.post('/enrollment/create', data);
+        return response.data;
+    },
+};

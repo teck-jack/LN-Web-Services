@@ -169,9 +169,15 @@ exports.verifyEnrollment = async (req, res, next) => {
             paymentMethod = 'test_payment';
         }
 
+        // Generate unique case ID using timestamp and counter
+        const caseCount = await Case.countDocuments();
+        const timestamp = Date.now();
+        const randomSuffix = Math.random().toString(36).substring(2, 5).toUpperCase();
+        const caseId = `CASE-${timestamp}-${String(caseCount + 1).padStart(4, '0')}-${randomSuffix}`;
+
         // Create case with audit trail
         const caseItem = await Case.create({
-            caseId: `CASE-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`.toUpperCase(),
+            caseId,
             endUserId: targetUserId,
             serviceId,
             status: constants.CASE_STATUS.NEW,
@@ -213,6 +219,16 @@ exports.verifyEnrollment = async (req, res, next) => {
             paymentData.originalAmount = service.price;
             paymentData.discountAmount = 0;
         }
+
+        // Add payment metadata for audit trail
+        paymentData.paymentMetadata = {
+            enrolledBy: enrollerId,
+            enrollerRole: req.user.role,
+            paymentInitiatedFrom: req.user.role === 'end_user' ? 'end_user_portal' :
+                req.user.role === 'employee' ? 'employee_panel' :
+                    req.user.role === 'admin' ? 'admin_panel' :
+                        req.user.role === 'agent' ? 'agent_portal' : 'unknown'
+        };
 
         // Create payment record
         const payment = await Payment.create(paymentData);

@@ -39,6 +39,7 @@ const cannedResponseRoutes = require('./routes/cannedResponseRoutes');
 const contactQueryRoutes = require('./routes/contactQueryRoutes');
 const couponRoutes = require('./routes/couponRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
+const enrollmentRoutes = require('./routes/enrollmentRoutes');
 
 // Mount routers
 app.use('/api/auth', authRoutes);
@@ -48,6 +49,7 @@ app.use('/api/associate', associateRoutes);
 app.use('/api/employee', employeeRoutes);
 app.use('/api/enduser', endUserRoutes);
 app.use('/api/payment', paymentRoutes);  // Unified payment for all roles
+app.use('/api/enrollment', enrollmentRoutes);  // Unified enrollment with multiple payment methods
 // 🆕 NEW ROUTE MOUNTS
 app.use('/api/admin/workflow-templates', workflowRoutes);
 app.use('/api/documents', documentVersionRoutes);
