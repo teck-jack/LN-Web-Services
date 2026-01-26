@@ -3,6 +3,7 @@ logs
 *.log
 npm-debug.log*
 yarn-debug.log*
+yarn-error.log*
 lerna-debug.log*
 
 # Runtime data
@@ -22,14 +23,13 @@ jspm_packages/
 # Environment variables
 .env
 .env.local
+.env.*.local
 
 # Build and coverage files
 build/
 dist/
 coverage/
 *.tgz
-public/build
-public/*.map
 
 # OS and IDE specific files
 .DS_Store
@@ -39,14 +39,13 @@ public/*.map
 *.user
 *.cas
 *.sdf
+Thumbs.db
 
-# MongoDB specific files (if applicable locally)
-.mongo/
-mongodb/
-
-# frontend specific build files (if a separate frontend folder exists)
+# Frontend specific build files (redundant if frontend has own gitignore, but safe to keep)
 frontend/build/
 frontend/node_modules/
+frontend/dist/
 
-# Documentation
-RAZORPAY_SETUP.md
+# Backend specific
+backend/node_modules/
+backend/uploads/
