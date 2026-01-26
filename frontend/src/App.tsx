@@ -30,6 +30,7 @@ import AdminProfile from "./pages/admin/Profile";
 import AdminSettings from "./pages/admin/Settings";
 import CouponManagement from "./pages/admin/CouponManagement";
 import AdminEndUsers from "./pages/admin/EndUsers";
+import AdminPaymentHistory from "./pages/admin/PaymentHistory";
 
 // Agent pages
 import AgentDashboard from "./pages/agent/Dashboard";
@@ -42,6 +43,7 @@ import AgentReports from "./pages/agent/Reports";
 import AgentNotifications from "./pages/agent/Notifications";
 import AgentProfile from "./pages/agent/Profile";
 import AgentSettings from "./pages/agent/Settings";
+import AgentPaymentHistory from "./pages/agent/PaymentHistory";
 
 // Associate pages
 import AssociateDashboard from "./pages/associate/Dashboard";
@@ -54,6 +56,7 @@ import AssociateReports from "./pages/associate/Reports";
 import AssociateNotifications from "./pages/associate/Notifications";
 import AssociateProfile from "./pages/associate/Profile";
 import AssociateSettings from "./pages/associate/Settings";
+import AssociatePaymentHistory from "./pages/associate/PaymentHistory";
 
 // Employee pages
 import EmployeeDashboard from "./pages/employee/Dashboard";
@@ -63,6 +66,7 @@ import EmployeeNotifications from "./pages/employee/Notifications";
 import EmployeeProfile from "./pages/employee/Profile";
 import EmployeeSettings from "./pages/employee/Settings";
 import EmployeeEndUsers from "./pages/employee/EndUsers";
+import EmployeePaymentHistory from "./pages/employee/PaymentHistory";
 
 // End user pages
 import EndUserDashboard from "./pages/end-user/Dashboard";
@@ -152,6 +156,7 @@ const App = () => (
                   <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={["admin"]}><MainLayout><AdminSettings /></MainLayout></ProtectedRoute>} />
                   <Route path="/admin/coupons" element={<ProtectedRoute allowedRoles={["admin"]}><MainLayout><CouponManagement /></MainLayout></ProtectedRoute>} />
                   <Route path="/admin/end-users" element={<ProtectedRoute allowedRoles={["admin"]}><MainLayout><AdminEndUsers /></MainLayout></ProtectedRoute>} />
+                  <Route path="/admin/payment-history" element={<ProtectedRoute allowedRoles={["admin"]}><MainLayout><AdminPaymentHistory /></MainLayout></ProtectedRoute>} />
 
                   {/* Agent routes */}
                   <Route path="/agent/dashboard" element={<ProtectedRoute allowedRoles={["agent"]}><MainLayout><AgentDashboard /></MainLayout></ProtectedRoute>} />
@@ -164,6 +169,7 @@ const App = () => (
                   <Route path="/agent/notifications" element={<ProtectedRoute allowedRoles={["agent"]}><MainLayout><AgentNotifications /></MainLayout></ProtectedRoute>} />
                   <Route path="/agent/profile" element={<ProtectedRoute allowedRoles={["agent"]}><MainLayout><AgentProfile /></MainLayout></ProtectedRoute>} />
                   <Route path="/agent/settings" element={<ProtectedRoute allowedRoles={["agent"]}><MainLayout><AgentSettings /></MainLayout></ProtectedRoute>} />
+                  <Route path="/agent/payment-history" element={<ProtectedRoute allowedRoles={["agent"]}><MainLayout><AgentPaymentHistory /></MainLayout></ProtectedRoute>} />
 
                   {/* Associate routes */}
                   <Route path="/associate/dashboard" element={<ProtectedRoute allowedRoles={["associate"]}><MainLayout><AssociateDashboard /></MainLayout></ProtectedRoute>} />
@@ -176,6 +182,7 @@ const App = () => (
                   <Route path="/associate/notifications" element={<ProtectedRoute allowedRoles={["associate"]}><MainLayout><AssociateNotifications /></MainLayout></ProtectedRoute>} />
                   <Route path="/associate/profile" element={<ProtectedRoute allowedRoles={["associate"]}><MainLayout><AssociateProfile /></MainLayout></ProtectedRoute>} />
                   <Route path="/associate/settings" element={<ProtectedRoute allowedRoles={["associate"]}><MainLayout><AssociateSettings /></MainLayout></ProtectedRoute>} />
+                  <Route path="/associate/payment-history" element={<ProtectedRoute allowedRoles={["associate"]}><MainLayout><AssociatePaymentHistory /></MainLayout></ProtectedRoute>} />
 
                   {/* Employee routes */}
                   <Route path="/employee/dashboard" element={<ProtectedRoute allowedRoles={["employee"]}><MainLayout><EmployeeDashboard /></MainLayout></ProtectedRoute>} />
@@ -187,6 +194,7 @@ const App = () => (
                   <Route path="/employee/contact-queries" element={<ProtectedRoute allowedRoles={["employee"]}><MainLayout><EmployeeContactQueries /></MainLayout></ProtectedRoute>} />
                   <Route path="/employee/contact-queries/:id" element={<ProtectedRoute allowedRoles={["employee"]}><MainLayout><EmployeeContactQueryDetails /></MainLayout></ProtectedRoute>} />
                   <Route path="/employee/end-users" element={<ProtectedRoute allowedRoles={["employee"]}><MainLayout><EmployeeEndUsers /></MainLayout></ProtectedRoute>} />
+                  <Route path="/employee/payment-history" element={<ProtectedRoute allowedRoles={["employee"]}><MainLayout><EmployeePaymentHistory /></MainLayout></ProtectedRoute>} />
 
                   {/* End User routes */}
                   <Route path="/end-user/dashboard" element={<ProtectedRoute allowedRoles={["end_user"]}><MainLayout><EndUserDashboard /></MainLayout></ProtectedRoute>} />

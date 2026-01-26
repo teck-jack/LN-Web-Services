@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { DataTable } from "@/components/common/DataTable";
-import { Search, Filter, Download, DollarSign, CreditCard, Calendar, Printer, X, FileText } from "lucide-react";
+import { Search, Filter, Download, IndianRupee, CreditCard, Calendar, Printer, X, FileText } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { toast } from "sonner";
 import { getPaymentReceipt } from "@/services/endUserService";
@@ -305,7 +305,7 @@ export default function Payments() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-sm font-medium">Total Amount Paid</CardTitle>
-            <DollarSign className="h-5 w-5 text-success" />
+            <IndianRupee className="h-5 w-5 text-success" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">₹{totalAmount.toLocaleString()}</div>

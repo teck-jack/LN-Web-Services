@@ -130,4 +130,12 @@ PaymentSchema.pre('save', async function (next) {
   next();
 });
 
+// Indexes for performance optimization
+// Note: transactionId and invoiceNumber already have indexes via unique: true
+PaymentSchema.index({ 'paymentMetadata.enrolledBy': 1, status: 1, paymentDate: -1 });
+PaymentSchema.index({ caseId: 1 });
+PaymentSchema.index({ status: 1, paymentDate: -1 });
+PaymentSchema.index({ paymentMethod: 1 });
+PaymentSchema.index({ 'paymentMetadata.enrollerRole': 1, paymentDate: -1 });
+
 module.exports = mongoose.model('Payment', PaymentSchema);

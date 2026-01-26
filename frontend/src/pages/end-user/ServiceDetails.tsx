@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { Timeline } from "@/components/common/Timeline";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { ArrowLeft, Clock, DollarSign, FileText, ShoppingCart } from "lucide-react";
+import { ArrowLeft, Clock, IndianRupee, FileText, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 
 export default function ServiceDetails() {
@@ -89,7 +89,7 @@ export default function ServiceDetails() {
               <div className="grid gap-4 mt-6 sm:grid-cols-2">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-primary/10 rounded-lg">
-                    <DollarSign className="h-5 w-5 text-primary" />
+                    <IndianRupee className="h-5 w-5 text-primary" />
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Price</p>

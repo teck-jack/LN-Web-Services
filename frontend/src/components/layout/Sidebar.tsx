@@ -15,7 +15,7 @@ import {
   Package,
   Bell,
   User,
-  DollarSign,
+  IndianRupee,
   ShoppingBag,
   MessageSquare,
 } from "lucide-react";
@@ -89,6 +89,12 @@ const navItems: NavItem[] = [
     roles: ["admin"],
   },
   {
+    title: "Payment History",
+    href: "/admin/payment-history",
+    icon: IndianRupee,
+    roles: ["admin"],
+  },
+  {
     title: "Notifications",
     href: "/admin/notifications",
     icon: Bell,
@@ -117,6 +123,12 @@ const navItems: NavItem[] = [
     title: "Reports",
     href: "/agent/reports",
     icon: BarChart3,
+    roles: ["agent"],
+  },
+  {
+    title: "Payment History",
+    href: "/agent/payment-history",
+    icon: IndianRupee,
     roles: ["agent"],
   },
   {
@@ -151,6 +163,12 @@ const navItems: NavItem[] = [
     roles: ["associate"],
   },
   {
+    title: "Payment History",
+    href: "/associate/payment-history",
+    icon: IndianRupee,
+    roles: ["associate"],
+  },
+  {
     title: "Notifications",
     href: "/associate/notifications",
     icon: Bell,
@@ -182,6 +200,12 @@ const navItems: NavItem[] = [
     roles: ["employee"],
   },
   {
+    title: "Payment History",
+    href: "/employee/payment-history",
+    icon: IndianRupee,
+    roles: ["employee"],
+  },
+  {
     title: "Profile",
     href: "/employee/profile",
     icon: User,
@@ -209,7 +233,7 @@ const navItems: NavItem[] = [
   {
     title: "Payments",
     href: "/end-user/payments",
-    icon: DollarSign,
+    icon: IndianRupee,
     roles: ["end_user"],
   },
   {

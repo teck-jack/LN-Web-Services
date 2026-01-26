@@ -283,3 +283,394 @@ exports.verifyEnrollment = async (req, res, next) => {
         next(err);
     }
 };
+
+// @desc    Get payment history for current user (role-based)
+// @route   GET /api/payment/history
+// @access  Private (All authenticated users)
+exports.getPaymentHistory = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const userRole = req.user.role;
+        const {
+            page = 1,
+            limit = 10,
+            status,
+            startDate,
+            endDate,
+            paymentMethod,
+            searchQuery,
+            serviceType
+        } = req.query;
+
+        // Build base query based on role
+        let query = {};
+
+        switch (userRole) {
+            case constants.USER_ROLES.ADMIN:
+                // Admin can see all payments - no filter needed
+                break;
+
+            case constants.USER_ROLES.EMPLOYEE:
+                // Employee sees payments for cases they enrolled
+                query['paymentMetadata.enrolledBy'] = userId;
+                query['paymentMetadata.enrollerRole'] = constants.USER_ROLES.EMPLOYEE;
+                break;
+
+            case constants.USER_ROLES.AGENT:
+                // Agent sees payments from their onboarded users
+                // First, find all users onboarded by this agent
+                const agentUsers = await User.find({ agentId: userId }).select('_id');
+                const agentUserIds = agentUsers.map(u => u._id);
+
+                // Find all cases for these users
+                const agentCases = await Case.find({ endUserId: { $in: agentUserIds } }).select('_id');
+                const agentCaseIds = agentCases.map(c => c._id);
+
+                query.caseId = { $in: agentCaseIds };
+                break;
+
+            case constants.USER_ROLES.ASSOCIATE:
+                // Associate sees payments for cases they enrolled
+                query['paymentMetadata.enrolledBy'] = userId;
+                query['paymentMetadata.enrollerRole'] = constants.USER_ROLES.ASSOCIATE;
+                break;
+
+            case constants.USER_ROLES.END_USER:
+                // End user sees only their own payments
+                const endUserCases = await Case.find({ endUserId: userId }).select('_id');
+                const endUserCaseIds = endUserCases.map(c => c._id);
+                query.caseId = { $in: endUserCaseIds };
+                break;
+
+            default:
+                return res.status(403).json({
+                    success: false,
+                    error: 'Unauthorized access'
+                });
+        }
+
+        // Apply additional filters
+        if (status) {
+            query.status = status;
+        }
+
+        if (paymentMethod) {
+            query.paymentMethod = paymentMethod;
+        }
+
+        if (startDate || endDate) {
+            query.paymentDate = {};
+            if (startDate) {
+                query.paymentDate.$gte = new Date(startDate);
+            }
+            if (endDate) {
+                query.paymentDate.$lte = new Date(endDate);
+            }
+        }
+
+        // Search query (transaction ID, case ID, or service name)
+        if (searchQuery) {
+            const searchRegex = new RegExp(searchQuery, 'i');
+
+            // Find matching cases by caseId
+            const matchingCases = await Case.find({
+                caseId: searchRegex
+            }).select('_id');
+
+            const matchingCaseIds = matchingCases.map(c => c._id);
+
+            query.$or = [
+                { transactionId: searchRegex },
+                { invoiceNumber: searchRegex },
+                { caseId: { $in: matchingCaseIds } }
+            ];
+        }
+
+        // Pagination
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+        const total = await Payment.countDocuments(query);
+
+        // Fetch payments with populated fields
+        let payments = await Payment.find(query)
+            .populate({
+                path: 'caseId',
+                select: 'caseId endUserId serviceId enrolledBy enrollmentType',
+                populate: [
+                    {
+                        path: 'endUserId',
+                        select: 'name email phone'
+                    },
+                    {
+                        path: 'serviceId',
+                        select: 'name type price description duration'
+                    },
+                    {
+                        path: 'enrolledBy',
+                        select: 'name email role'
+                    }
+                ]
+            })
+            .populate({
+                path: 'paymentMetadata.enrolledBy',
+                select: 'name email role'
+            })
+            .sort({ paymentDate: -1 })
+            .skip(skip)
+            .limit(parseInt(limit));
+
+        // Filter by service type if provided
+        if (serviceType) {
+            payments = payments.filter(payment =>
+                payment.caseId?.serviceId?.type === serviceType
+            );
+        }
+
+        res.status(200).json({
+            success: true,
+            data: {
+                payments,
+                pagination: {
+                    page: parseInt(page),
+                    limit: parseInt(limit),
+                    total,
+                    pages: Math.ceil(total / parseInt(limit))
+                }
+            }
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// @desc    Get payment analytics/statistics
+// @route   GET /api/payment/analytics
+// @access  Private (All authenticated users)
+exports.getPaymentAnalytics = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const userRole = req.user.role;
+
+        // Build base query based on role (same logic as getPaymentHistory)
+        let query = {};
+
+        switch (userRole) {
+            case constants.USER_ROLES.ADMIN:
+                // Admin can see all payments
+                break;
+
+            case constants.USER_ROLES.EMPLOYEE:
+                query['paymentMetadata.enrolledBy'] = userId;
+                query['paymentMetadata.enrollerRole'] = constants.USER_ROLES.EMPLOYEE;
+                break;
+
+            case constants.USER_ROLES.AGENT:
+                const agentUsers = await User.find({ agentId: userId }).select('_id');
+                const agentUserIds = agentUsers.map(u => u._id);
+                const agentCases = await Case.find({ endUserId: { $in: agentUserIds } }).select('_id');
+                const agentCaseIds = agentCases.map(c => c._id);
+                query.caseId = { $in: agentCaseIds };
+                break;
+
+            case constants.USER_ROLES.ASSOCIATE:
+                query['paymentMetadata.enrolledBy'] = userId;
+                query['paymentMetadata.enrollerRole'] = constants.USER_ROLES.ASSOCIATE;
+                break;
+
+            case constants.USER_ROLES.END_USER:
+                const endUserCases = await Case.find({ endUserId: userId }).select('_id');
+                const endUserCaseIds = endUserCases.map(c => c._id);
+                query.caseId = { $in: endUserCaseIds };
+                break;
+
+            default:
+                return res.status(403).json({
+                    success: false,
+                    error: 'Unauthorized access'
+                });
+        }
+
+        // Aggregate statistics
+        const totalPayments = await Payment.countDocuments(query);
+
+        const completedQuery = { ...query, status: 'completed' };
+        const completedPayments = await Payment.find(completedQuery);
+        const totalRevenue = completedPayments.reduce((sum, p) => sum + p.amount, 0);
+        const totalDiscount = completedPayments.reduce((sum, p) => sum + (p.discountAmount || 0), 0);
+
+        const statusBreakdown = await Payment.aggregate([
+            { $match: query },
+            { $group: { _id: '$status', count: { $sum: 1 } } }
+        ]);
+
+        const methodBreakdown = await Payment.aggregate([
+            { $match: query },
+            { $group: { _id: '$paymentMethod', count: { $sum: 1 }, total: { $sum: '$amount' } } }
+        ]);
+
+        // Role-specific analytics
+        let roleSpecificData = {};
+
+        if (userRole === constants.USER_ROLES.AGENT) {
+            // Calculate commission (assuming 10% commission rate from User model)
+            const agent = await User.findById(userId).select('commissionRate totalCommissionEarned');
+            const commissionRate = agent.commissionRate || 10;
+            const estimatedCommission = (totalRevenue * commissionRate) / 100;
+
+            roleSpecificData = {
+                commissionRate,
+                estimatedCommission,
+                totalCommissionEarned: agent.totalCommissionEarned || 0,
+                onboardedUsersCount: (await User.countDocuments({ agentId: userId }))
+            };
+        }
+
+        if (userRole === constants.USER_ROLES.EMPLOYEE || userRole === constants.USER_ROLES.ASSOCIATE) {
+            // Count unique end users enrolled
+            const payments = await Payment.find(query).populate('caseId');
+            const uniqueEndUsers = new Set(payments.map(p => p.caseId?.endUserId?.toString()).filter(Boolean));
+
+            roleSpecificData = {
+                enrolledUsersCount: uniqueEndUsers.size,
+                averageRevenuePerUser: uniqueEndUsers.size > 0 ? totalRevenue / uniqueEndUsers.size : 0
+            };
+        }
+
+        res.status(200).json({
+            success: true,
+            data: {
+                totalPayments,
+                totalRevenue,
+                totalDiscount,
+                averageTransaction: totalPayments > 0 ? totalRevenue / totalPayments : 0,
+                statusBreakdown: statusBreakdown.reduce((acc, item) => {
+                    acc[item._id] = item.count;
+                    return acc;
+                }, {}),
+                methodBreakdown: methodBreakdown.map(item => ({
+                    method: item._id,
+                    count: item.count,
+                    total: item.total
+                })),
+                ...roleSpecificData
+            }
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// @desc    Export payment history as CSV
+// @route   GET /api/payment/export
+// @access  Private (All authenticated users)
+exports.exportPaymentHistory = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const userRole = req.user.role;
+
+        // Build base query based on role (same logic as getPaymentHistory)
+        let query = {};
+
+        switch (userRole) {
+            case constants.USER_ROLES.ADMIN:
+                break;
+
+            case constants.USER_ROLES.EMPLOYEE:
+                query['paymentMetadata.enrolledBy'] = userId;
+                query['paymentMetadata.enrollerRole'] = constants.USER_ROLES.EMPLOYEE;
+                break;
+
+            case constants.USER_ROLES.AGENT:
+                const agentUsers = await User.find({ agentId: userId }).select('_id');
+                const agentUserIds = agentUsers.map(u => u._id);
+                const agentCases = await Case.find({ endUserId: { $in: agentUserIds } }).select('_id');
+                const agentCaseIds = agentCases.map(c => c._id);
+                query.caseId = { $in: agentCaseIds };
+                break;
+
+            case constants.USER_ROLES.ASSOCIATE:
+                query['paymentMetadata.enrolledBy'] = userId;
+                query['paymentMetadata.enrollerRole'] = constants.USER_ROLES.ASSOCIATE;
+                break;
+
+            case constants.USER_ROLES.END_USER:
+                const endUserCases = await Case.find({ endUserId: userId }).select('_id');
+                const endUserCaseIds = endUserCases.map(c => c._id);
+                query.caseId = { $in: endUserCaseIds };
+                break;
+
+            default:
+                return res.status(403).json({
+                    success: false,
+                    error: 'Unauthorized access'
+                });
+        }
+
+        // Fetch all payments matching query
+        const payments = await Payment.find(query)
+            .populate({
+                path: 'caseId',
+                select: 'caseId endUserId serviceId',
+                populate: [
+                    { path: 'endUserId', select: 'name email phone' },
+                    { path: 'serviceId', select: 'name type price' }
+                ]
+            })
+            .populate({
+                path: 'paymentMetadata.enrolledBy',
+                select: 'name email role'
+            })
+            .sort({ paymentDate: -1 });
+
+        // Generate CSV
+        const csvHeaders = [
+            'Invoice Number',
+            'Transaction ID',
+            'Case ID',
+            'End User Name',
+            'End User Email',
+            'Service Name',
+            'Service Type',
+            'Original Amount',
+            'Discount Amount',
+            'Coupon Code',
+            'Final Amount',
+            'Payment Method',
+            'Status',
+            'Payment Date',
+            'Enrolled By',
+            'Enroller Role'
+        ];
+
+        const csvRows = payments.map(payment => [
+            payment.invoiceNumber || 'N/A',
+            payment.transactionId,
+            payment.caseId?.caseId || 'N/A',
+            payment.caseId?.endUserId?.name || 'N/A',
+            payment.caseId?.endUserId?.email || 'N/A',
+            payment.caseId?.serviceId?.name || 'N/A',
+            payment.caseId?.serviceId?.type || 'N/A',
+            payment.originalAmount || payment.amount,
+            payment.discountAmount || 0,
+            payment.couponCode || 'N/A',
+            payment.amount,
+            payment.paymentMethod,
+            payment.status,
+            new Date(payment.paymentDate).toLocaleDateString(),
+            payment.paymentMetadata?.enrolledBy?.name || 'N/A',
+            payment.paymentMetadata?.enrollerRole || 'N/A'
+        ]);
+
+        // Create CSV content
+        const csvContent = [
+            csvHeaders.join(','),
+            ...csvRows.map(row => row.map(cell => `"${cell}"`).join(','))
+        ].join('\n');
+
+        // Set headers for file download
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename=payment-history-${Date.now()}.csv`);
+        res.status(200).send(csvContent);
+    } catch (err) {
+        next(err);
+    }
+};

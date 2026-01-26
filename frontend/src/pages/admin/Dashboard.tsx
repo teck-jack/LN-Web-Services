@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Briefcase, DollarSign, TrendingUp } from "lucide-react";
+import { Users, Briefcase, IndianRupee, TrendingUp } from "lucide-react";
 import { adminService } from "@/services/adminService";
 import { toast } from "sonner";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
@@ -68,7 +68,7 @@ export default function AdminDashboard() {
     {
       title: "Total Revenue",
       value: `₹${dashboardData.revenue?.total?.toLocaleString() || 0}`,
-      icon: DollarSign,
+      icon: IndianRupee,
       color: "text-success",
     },
     {

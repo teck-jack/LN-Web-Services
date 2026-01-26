@@ -137,3 +137,51 @@ export const enrollmentService = {
         return response.data;
     },
 };
+
+/**
+ * Payment History Service
+ * Handles payment history retrieval with role-based access
+ */
+export const paymentHistoryService = {
+    /**
+     * Get payment history for current user (role-based)
+     */
+    getPaymentHistory: async (params?: {
+        page?: number;
+        limit?: number;
+        status?: string;
+        startDate?: string;
+        endDate?: string;
+        paymentMethod?: string;
+        searchQuery?: string;
+        serviceType?: string;
+    }) => {
+        const response = await api.get('/payment/history', { params });
+        return response.data;
+    },
+
+    /**
+     * Get payment analytics/statistics
+     */
+    getPaymentAnalytics: async () => {
+        const response = await api.get('/payment/analytics');
+        return response.data;
+    },
+
+    /**
+     * Export payment history as CSV
+     */
+    exportPaymentHistory: async (params?: {
+        status?: string;
+        startDate?: string;
+        endDate?: string;
+        paymentMethod?: string;
+        serviceType?: string;
+    }) => {
+        const response = await api.get('/payment/export', {
+            params,
+            responseType: 'blob'
+        });
+        return response.data;
+    },
+};
