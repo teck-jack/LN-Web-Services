@@ -413,6 +413,56 @@ select {
   background: rgba(255, 255, 255, 0.2);
 }
 
+/* ===== Minimal Thin Scrollbar for Dialogs ===== */
+.dialog-scrollbar {
+  scroll-behavior: smooth;
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: rgba(0, 0, 0, 0.15) transparent; /* Firefox - thumb track */
+}
+
+/* Webkit browsers (Chrome, Safari, Edge) - Vertical scrollbar */
+.dialog-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.dialog-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 2px;
+}
+
+.dialog-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 2px;
+  transition: background 0.2s ease;
+}
+
+.dialog-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+/* Horizontal scrollbar corner */
+.dialog-scrollbar::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Dark mode dialog scrollbar */
+.dark .dialog-scrollbar {
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent; /* Firefox */
+}
+
+.dark .dialog-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.dark .dialog-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.dark .dialog-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
 /* ===== Container Utility ===== */
 .container {
   width: 100%;
