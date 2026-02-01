@@ -17,9 +17,19 @@ app.use(express.json());
 
 // Enable CORS
 app.use(cors({
-  origin: ['http://localhost:8080', 'https://indianlegalfiling.com', 'https://www.indianlegalfiling.com', 'https://ln-web-services-6.onrender.com'],
-  credentials: true, // Often needed when using cookies or authorization headers
+  origin: [
+    'http://localhost:8080',
+    'http://lntrademark.cloud',
+    'https://lntrademark.cloud',
+    'http://www.lntrademark.cloud',
+    'https://www.lntrademark.cloud',
+
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
+
 
 
 // Route files
@@ -71,7 +81,7 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 
-const server = app.listen(PORT, () =>
+const server = app.listen(PORT, "0.0.0.0", () =>
   console.log(`✅ Server running on port ${PORT}`)
 );
 
