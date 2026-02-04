@@ -18,7 +18,7 @@ app.use(express.json());
 // Enable CORS
 app.use(cors({
   origin: [
-    'http://localhost:8080',
+    'http://localhost:5173',
     'http://lntrademark.cloud',
     'https://lntrademark.cloud',
     'http://www.lntrademark.cloud',
