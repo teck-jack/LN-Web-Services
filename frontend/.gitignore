@@ -33,6 +33,7 @@ vite.config.js.timestamp-*
 # Environment variables
 .env
 .env.local
+.env.production
 .env.*.local
 
 # Testing

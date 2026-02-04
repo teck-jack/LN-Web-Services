@@ -23,6 +23,7 @@ jspm_packages/
 # Environment variables
 .env
 .env.local
+.env.production
 .env.*.local
 
 # Build and coverage files
