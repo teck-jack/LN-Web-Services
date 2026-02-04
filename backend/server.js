@@ -20,13 +20,12 @@ app.use(express.json());
 app.use(cors({
   origin: [
     'http://localhost:5173',
-    'http://localhost:8080',
     process.env.FRONTEND_URL,
     'https://lntrademark.cloud',
     'http://lntrademark.cloud',
     'https://www.lntrademark.cloud',
     'http://www.lntrademark.cloud'
-  ].filter(Boolean),
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
