@@ -8,7 +8,7 @@ const PaymentSchema = new mongoose.Schema({
   },
   amount: {
     type: Number,
-    required: [true, 'Please add an amount']
+    required: [true, 'Please add an amount.']
     // This stores the final amount after discount (if any)
   },
   transactionId: {
