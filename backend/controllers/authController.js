@@ -24,7 +24,7 @@ exports.register = async (req, res, next) => {
     // Create notification for admin if user is registered by agent
     if (sourceTag === constants.SOURCE_TAGS.AGENT) {
       const admins = await User.find({ role: constants.USER_ROLES.ADMIN });
-      
+
       for (const admin of admins) {
         await Notification.create({
           recipientId: admin._id,
@@ -49,8 +49,11 @@ exports.login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
+    console.log('Login attempt for:', email);
+
     // Validate email & password
     if (!email || !password) {
+      console.log('Missing email or password');
       return res.status(400).json({
         success: false,
         error: 'Please provide an email and password'
@@ -61,16 +64,20 @@ exports.login = async (req, res, next) => {
     const user = await User.findOne({ email }).select('+password');
 
     if (!user) {
+      console.log('User not found');
       return res.status(401).json({
         success: false,
         error: 'Invalid credentials'
       });
     }
 
+    console.log('User found, checking password...');
+
     // Check if password matches
     const isMatch = await user.matchPassword(password);
 
     if (!isMatch) {
+      console.log('Password mismatch');
       return res.status(401).json({
         success: false,
         error: 'Invalid credentials'
@@ -79,14 +86,17 @@ exports.login = async (req, res, next) => {
 
     // Check if user is active
     if (!user.isActive) {
+      console.log('User inactive');
       return res.status(401).json({
         success: false,
         error: 'Your account has been deactivated'
       });
     }
 
+    console.log('Login successful');
     sendTokenResponse(user, 200, res);
   } catch (err) {
+    console.error('Login error:', err);
     next(err);
   }
 };
