@@ -1,10 +1,20 @@
 const Razorpay = require('razorpay');
+const crypto = require('crypto');
 const config = require('../config/config');
 
 const razorpay = new Razorpay({
   key_id: config.razorpayKeyId,
   key_secret: config.razorpayKeySecret
 });
+
+// Validation check just for logging (non-blocking)
+if (config.razorpayKeyId === config.razorpayKeySecret && config.razorpayKeyId && config.razorpayKeyId.length > 0) {
+  console.error('❌ CRITICAL ERROR: Razorpay Key ID and Secret are IDENTICAL. This is definitely wrong.');
+  console.error('   Please check backend/.env file and provide correct keys.');
+}
+if (config.razorpayKeyId && config.razorpayKeyId.length < 20) {
+  console.error('❌ WARNING: Razorpay Key ID looks too short. Check backend/.env');
+}
 
 const createOrder = async (amount, testMode = false) => {
   try {

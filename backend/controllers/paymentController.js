@@ -70,8 +70,12 @@ exports.createPaymentOrder = async (req, res, next) => {
             }
         }
 
+        // Calculate GST (0%)
+        const taxAmount = 0;
+        const totalAmount = finalAmount + taxAmount;
+
         // Create order
-        const order = await createOrder(finalAmount, isTestMode);
+        const order = await createOrder(totalAmount, isTestMode);
 
         res.status(200).json({
             success: true,
@@ -197,6 +201,15 @@ exports.verifyEnrollment = async (req, res, next) => {
             paymentDate: new Date()
         };
 
+        // Calculate Taxable Amount and GST
+        let taxableAmount = service.price;
+        if (couponCode && discountInfo) {
+            taxableAmount = discountInfo.finalAmount;
+        }
+
+        const taxAmount = 0; // GST set to 0%
+        const totalAmount = taxableAmount + taxAmount;
+
         // If coupon was used, add discount information
         if (couponCode && discountInfo) {
             paymentData.couponCode = couponCode;
@@ -204,7 +217,8 @@ exports.verifyEnrollment = async (req, res, next) => {
             paymentData.originalAmount = discountInfo.originalAmount;
             paymentData.discountPercentage = discountInfo.discountPercentage;
             paymentData.discountAmount = discountInfo.discountAmount;
-            paymentData.amount = discountInfo.finalAmount;
+            paymentData.amount = totalAmount; // Final amount with tax
+            paymentData.taxAmount = taxAmount;
 
             // Record coupon usage
             if (couponId) {
@@ -215,9 +229,10 @@ exports.verifyEnrollment = async (req, res, next) => {
                 }
             }
         } else {
-            paymentData.amount = service.price;
+            paymentData.amount = totalAmount; // Final amount with tax
             paymentData.originalAmount = service.price;
             paymentData.discountAmount = 0;
+            paymentData.taxAmount = taxAmount;
         }
 
         // Add payment metadata for audit trail

@@ -30,14 +30,17 @@ api.interceptors.response.use(
   (error) => {
     if (error.response) {
       const { status, data } = error.response;
+      const skipAuthRedirect = error.config?.skipAuthRedirect;
 
       switch (status) {
         case 401:
-          // Unauthorized - redirect to login
-          localStorage.removeItem("token");
-          if (window.location.pathname !== "/auth/login") {
-            toast.error("Session expired. Please login again.");
-            window.location.href = "/auth/login";
+          // Unauthorized - redirect to login (unless explicitly skipped)
+          if (!skipAuthRedirect) {
+            localStorage.removeItem("token");
+            if (window.location.pathname !== "/auth/login") {
+              toast.error("Session expired. Please login again.");
+              window.location.href = "/auth/login";
+            }
           }
           break;
         case 403:

@@ -112,6 +112,10 @@ const PaymentSchema = new mongoose.Schema({
   discountAmount: {
     type: Number,
     default: 0
+  },
+  taxAmount: {
+    type: Number,
+    default: 0
   }
 });
 

@@ -13,7 +13,9 @@ export const getService = (id: string) => {
 };
 
 export const createPaymentOrder = (serviceId: string, isTestMode?: boolean, couponCode?: string) => {
-  return api.post('/enduser/payment/create-order', { serviceId, isTestMode, couponCode });
+  return api.post('/enduser/payment/create-order', { serviceId, isTestMode, couponCode }, {
+    skipAuthRedirect: true
+  } as any);
 };
 
 export const verifyPayment = (paymentData: {
@@ -26,7 +28,9 @@ export const verifyPayment = (paymentData: {
   couponId?: string;
   discountInfo?: any;
 }) => {
-  return api.post('/enduser/payment/verify', { ...paymentData });
+  return api.post('/enduser/payment/verify', { ...paymentData }, {
+    skipAuthRedirect: true
+  } as any);
 };
 
 export const getCases = (params: { status?: string; page?: number; limit?: number }) => {

@@ -4,8 +4,7 @@ services:
   frontend:
     build:
       context: ./frontend
-      args:
-        - VITE_API_URL=http://localhost:5002/api
+
     container_name: ln-frontend
     ports:
       - "5175:5175"

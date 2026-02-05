@@ -140,9 +140,13 @@ exports.createPaymentOrder = async (req, res, next) => {
       finalAmount = discountInfo.finalAmount;
     }
 
+    // Calculate GST (0%)
+    const taxAmount = 0;
+    const totalAmount = finalAmount + taxAmount;
+
     // Create order with Razorpay
     const { isTestMode } = req.body;
-    const order = await createOrder(finalAmount, isTestMode);
+    const order = await createOrder(totalAmount, isTestMode);
 
     res.status(200).json({
       success: true,
@@ -223,6 +227,15 @@ exports.verifyPayment = async (req, res, next) => {
       paymentDate: new Date()
     };
 
+    // Calculate Taxable Amount and GST
+    let taxableAmount = service.price;
+    if (couponCode && discountInfo) {
+      taxableAmount = discountInfo.finalAmount;
+    }
+
+    const taxAmount = 0; // GST set to 0%
+    const totalAmount = taxableAmount + taxAmount;
+
     // If coupon was used, add discount information
     if (couponCode && discountInfo) {
       paymentData.couponCode = couponCode;
@@ -230,7 +243,8 @@ exports.verifyPayment = async (req, res, next) => {
       paymentData.originalAmount = discountInfo.originalAmount;
       paymentData.discountPercentage = discountInfo.discountPercentage;
       paymentData.discountAmount = discountInfo.discountAmount;
-      paymentData.amount = discountInfo.finalAmount;
+      paymentData.amount = totalAmount; // Total with Tax
+      paymentData.taxAmount = taxAmount;
 
       // Record coupon usage
       const Coupon = require('../models/Coupon');
@@ -240,9 +254,10 @@ exports.verifyPayment = async (req, res, next) => {
       }
     } else {
       // No coupon used
-      paymentData.amount = service.price;
+      paymentData.amount = totalAmount; // Total with Tax
       paymentData.originalAmount = service.price;
       paymentData.discountAmount = 0;
+      paymentData.taxAmount = taxAmount;
     }
 
     // Create payment record

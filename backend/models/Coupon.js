@@ -67,7 +67,7 @@ const CouponSchema = new mongoose.Schema({
         paymentId: {
             type: mongoose.Schema.ObjectId,
             ref: 'Payment',
-            required: true
+            required: false // Changed to false to allow initial recording before payment creation
         },
         discountAmount: {
             type: Number,

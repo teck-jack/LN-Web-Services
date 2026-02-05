@@ -121,7 +121,7 @@ export default function Payment() {
 
   const calculatePrices = () => {
     const basePrice = appliedCoupon ? appliedCoupon.discount.finalAmount : service!.price;
-    const gst = Math.round(basePrice * 0.18);
+    const gst = 0; // GST set to 0% statically
     const total = basePrice + gst;
     const discount = appliedCoupon ? appliedCoupon.discount.discountAmount : 0;
     return { basePrice, gst, total, discount };
