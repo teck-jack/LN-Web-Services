@@ -19,7 +19,7 @@ app.use(express.json());
 // Enable CORS
 app.use(cors({
   origin: [
-    'http://localhost:5173',
+    'http://localhost:5175',
     'http://localhost:3000',
     process.env.FRONTEND_URL,
     'https://lntrademark.cloud',
@@ -81,7 +81,7 @@ app.get('/', (req, res) => {
 // Error handler (must be after routes)
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5002;
 
 const server = app.listen(PORT, "0.0.0.0", () =>
   console.log(`✅ Server running on port ${PORT}`)

@@ -22,5 +22,5 @@ RUN npm i -g serve
 
 COPY --from=build /app/dist ./dist
 
-EXPOSE 5173
-CMD ["serve", "-s", "dist", "-l", "5173"]
+EXPOSE 5175
+CMD ["serve", "-s", "dist", "-l", "5175"]

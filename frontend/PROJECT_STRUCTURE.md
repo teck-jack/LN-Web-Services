@@ -84,7 +84,7 @@ src/
 The application is configured to work with a backend API. Set the API URL in your environment:
 
 ```env
-VITE_API_URL=http://localhost:5000/api
+VITE_API_URL=http://localhost:5002/api
 ```
 
 ## Next Steps (Phase 2)

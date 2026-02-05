@@ -5,10 +5,10 @@ services:
     build:
       context: ./frontend
       args:
-        - VITE_API_URL=http://localhost:5000/api
+        - VITE_API_URL=http://localhost:5002/api
     container_name: ln-frontend
     ports:
-      - "5173:5173"
+      - "5175:5175"
     networks:
       - fullstack_network
     restart: unless-stopped
@@ -20,7 +20,7 @@ services:
     build: ./backend
     container_name: ln-server
     ports:
-      - "5000:5000"
+      - "5002:5002"
     networks:
       - fullstack_network
     restart: unless-stopped

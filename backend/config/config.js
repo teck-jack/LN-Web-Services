@@ -1,5 +1,5 @@
 module.exports = {
-  port: process.env.PORT || 5000,
+  port: process.env.PORT || 5002,
   jwtSecret: process.env.JWT_SECRET || 'your_jwt_secret',
   jwtExpire: process.env.JWT_EXPIRE || '30d',
   emailHost: process.env.EMAIL_HOST,
