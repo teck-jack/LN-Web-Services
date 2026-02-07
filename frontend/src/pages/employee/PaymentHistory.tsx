@@ -161,9 +161,16 @@ export default function PaymentHistory() {
                 };
                 const method = methodLabels[row.paymentMethod] || { label: row.paymentMethod, variant: 'outline' };
                 return (
-                    <Badge variant={method.variant as any} className="capitalize">
-                        {method.label}
-                    </Badge>
+                    <div className="flex flex-col items-start gap-1">
+                        <Badge variant={method.variant as any} className="capitalize">
+                            {method.label}
+                        </Badge>
+                        {row.paymentMethod === 'cash' && row.cashPaymentDetails?.receiptNumber && (
+                            <span className="text-xs text-muted-foreground font-mono">
+                                RCP: {row.cashPaymentDetails.receiptNumber}
+                            </span>
+                        )}
+                    </div>
                 );
             },
         },

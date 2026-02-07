@@ -54,7 +54,13 @@ export const paymentService = {
         onFailure: (error: any) => void;
         onDismiss?: () => void;
     }) => {
-        const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_UfYSRe7oekOT1m';
+        const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
+
+        if (!razorpayKey) {
+            console.error('❌ CRITICAL: VITE_RAZORPAY_KEY_ID not configured');
+            onFailure(new Error('Payment gateway not configured. Please contact support.'));
+            return;
+        }
 
         // Load Razorpay script if not loaded
         const loadRazorpay = (): Promise<void> => {

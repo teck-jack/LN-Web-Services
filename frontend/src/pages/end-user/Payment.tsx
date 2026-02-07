@@ -21,8 +21,13 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
-// Razorpay Key from environment (fallback to test key for development)
-const RAZORPAY_KEY = import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_UfYSRe7oekOT1m";
+// Razorpay Key from environment - MUST be configured
+const RAZORPAY_KEY = import.meta.env.VITE_RAZORPAY_KEY_ID;
+
+if (!RAZORPAY_KEY) {
+  console.error('❌ CRITICAL: VITE_RAZORPAY_KEY_ID not found in environment variables!');
+  console.error('Please set VITE_RAZORPAY_KEY_ID in your .env file or deployment environment.');
+}
 
 interface PaymentSuccessData {
   case: {

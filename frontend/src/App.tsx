@@ -31,6 +31,7 @@ import AdminSettings from "./pages/admin/Settings";
 import CouponManagement from "./pages/admin/CouponManagement";
 import AdminEndUsers from "./pages/admin/EndUsers";
 import AdminPaymentHistory from "./pages/admin/PaymentHistory";
+import DirectEnrollment from "./pages/admin/DirectEnrollment";
 
 // Agent pages
 import AgentDashboard from "./pages/agent/Dashboard";
@@ -157,6 +158,7 @@ const App = () => (
                   <Route path="/admin/coupons" element={<ProtectedRoute allowedRoles={["admin"]}><MainLayout><CouponManagement /></MainLayout></ProtectedRoute>} />
                   <Route path="/admin/end-users" element={<ProtectedRoute allowedRoles={["admin"]}><MainLayout><AdminEndUsers /></MainLayout></ProtectedRoute>} />
                   <Route path="/admin/payment-history" element={<ProtectedRoute allowedRoles={["admin"]}><MainLayout><AdminPaymentHistory /></MainLayout></ProtectedRoute>} />
+                  <Route path="/admin/enroll" element={<ProtectedRoute allowedRoles={["admin", "employee"]}><MainLayout><DirectEnrollment /></MainLayout></ProtectedRoute>} />
 
                   {/* Agent routes */}
                   <Route path="/agent/dashboard" element={<ProtectedRoute allowedRoles={["agent"]}><MainLayout><AgentDashboard /></MainLayout></ProtectedRoute>} />

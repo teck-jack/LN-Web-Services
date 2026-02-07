@@ -95,6 +95,12 @@ const navItems: NavItem[] = [
     roles: ["admin"],
   },
   {
+    title: "Enrollment",
+    href: "/admin/enroll",
+    icon: UserCog,
+    roles: ["admin"],
+  },
+  {
     title: "Notifications",
     href: "/admin/notifications",
     icon: Bell,
@@ -203,6 +209,12 @@ const navItems: NavItem[] = [
     title: "Payment History",
     href: "/employee/payment-history",
     icon: IndianRupee,
+    roles: ["employee"],
+  },
+  {
+    title: "Enrollment",
+    href: "/admin/enroll",
+    icon: UserCog,
     roles: ["employee"],
   },
   {
