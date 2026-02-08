@@ -416,8 +416,10 @@ select {
 /* ===== Minimal Thin Scrollbar for Dialogs ===== */
 .dialog-scrollbar {
   scroll-behavior: smooth;
-  scrollbar-width: thin; /* Firefox */
-  scrollbar-color: rgba(0, 0, 0, 0.15) transparent; /* Firefox - thumb track */
+  scrollbar-width: thin;
+  /* Firefox */
+  scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+  /* Firefox - thumb track */
 }
 
 /* Webkit browsers (Chrome, Safari, Edge) - Vertical scrollbar */
@@ -448,7 +450,8 @@ select {
 
 /* Dark mode dialog scrollbar */
 .dark .dialog-scrollbar {
-  scrollbar-color: rgba(255, 255, 255, 0.15) transparent; /* Firefox */
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  /* Firefox */
 }
 
 .dark .dialog-scrollbar::-webkit-scrollbar-track {

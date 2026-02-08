@@ -334,11 +334,11 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
         <div className="flex h-full flex-col overflow-hidden">
           {/* Logo */}
           <div className="flex h-16 items-center justify-between px-6 border-b border-sidebar-border">
-            <Link to="/" className="flex items-center space-x-2" onClick={onClose}>
-              <div className="w-8 h-8 bg-sidebar-primary rounded-lg flex items-center justify-center">
-                <Shield className="w-5 h-5 text-sidebar-primary-foreground" />
+            <Link to="/" className="flex items-center space-x-1" onClick={onClose}>
+              <div className="h-10 w-auto flex items-center justify-center">
+                <img src="/Logo.webp.png" alt="LN Services" className="h-full w-auto object-contain drop-shadow-sm" />
               </div>
-              <span className="font-bold text-lg text-sidebar-foreground">LN Services</span>
+              <span className="font-bold text-lg tracking-tight text-sidebar-foreground">LN Services</span>
             </Link>
             <Button
               variant="ghost"
