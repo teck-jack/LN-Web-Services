@@ -59,7 +59,7 @@ export default function Payment() {
 
   const [processing, setProcessing] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
-  const [testMode, setTestMode] = useState(true);
+  const [testMode, setTestMode] = useState(false);
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
   const [validatingCoupon, setValidatingCoupon] = useState(false);
@@ -299,7 +299,8 @@ export default function Payment() {
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Test Mode Toggle */}
-              <div className="flex items-center space-x-2 p-4 border rounded-lg bg-accent/50">
+              {/* Test Mode Toggle - DISABLED FOR PRODUCTION */}
+              {/* <div className="flex items-center space-x-2 p-4 border rounded-lg bg-accent/50">
                 <Checkbox
                   id="test-mode"
                   checked={testMode}
@@ -311,9 +312,9 @@ export default function Payment() {
                 >
                   Test Mode (For Demo Purposes)
                 </label>
-              </div>
+              </div> */}
 
-              {testMode && (
+              {/* {testMode && (
                 <div className="p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
                   <div className="flex items-start gap-3">
                     <CheckCircle2 className="h-5 w-5 text-blue-600 mt-0.5" />
@@ -325,7 +326,7 @@ export default function Payment() {
                     </div>
                   </div>
                 </div>
-              )}
+              )} */}
 
               {/* Billing Information - Only for real payments */}
               {!testMode && (
@@ -488,7 +489,7 @@ export default function Payment() {
                 </div>
 
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">GST (18%)</span>
+                  <span className="text-muted-foreground">GST</span>
                   <span className="font-medium">₹{prices.gst.toLocaleString()}</span>
                 </div>
 

@@ -85,7 +85,7 @@ export function PaymentDialog({
 }: PaymentDialogProps) {
     const { user } = useAuth();
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('razorpay');
-    const [testMode, setTestMode] = useState(true);
+    const [testMode, setTestMode] = useState(false);
     const [termsAccepted, setTermsAccepted] = useState(false);
     const [processing, setProcessing] = useState(false);
     const [couponCode, setCouponCode] = useState("");
@@ -109,12 +109,12 @@ export function PaymentDialog({
                 icon: CreditCard,
                 description: 'Secure payment via Razorpay'
             },
-            {
-                value: 'test_payment' as PaymentMethod,
-                label: 'Test Mode',
-                icon: FlaskConical,
-                description: 'For testing (no real payment)'
-            }
+            // {
+            //     value: 'test_payment' as PaymentMethod,
+            //     label: 'Test Mode',
+            //     icon: FlaskConical,
+            //     description: 'For testing (no real payment)'
+            // }
         ];
 
         // Cash payment only for Admin and Employee
@@ -134,7 +134,7 @@ export function PaymentDialog({
     useEffect(() => {
         if (open) {
             setPaymentMethod('razorpay');
-            setTestMode(true);
+            setTestMode(false);
             setTermsAccepted(false);
             setProcessing(false);
             setCouponCode("");
@@ -483,8 +483,8 @@ export function PaymentDialog({
                         </div>
                     )}
 
-                    {/* Test Mode Info for Razorpay/Test */}
-                    {(paymentMethod === 'razorpay' || paymentMethod === 'test_payment') && (
+                    {/* Test Mode Info for Razorpay/Test - DISABLED FOR PRODUCTION */}
+                    {/* {(paymentMethod === 'razorpay' || paymentMethod === 'test_payment') && (
                         <>
                             {paymentMethod === 'razorpay' && (
                                 <div className="flex items-center space-x-2 p-3 border rounded-lg bg-accent/50">
@@ -510,7 +510,7 @@ export function PaymentDialog({
                                 </div>
                             )}
                         </>
-                    )}
+                    )} */}
 
                     {/* Coupon Code */}
                     <div className="space-y-2">
@@ -567,7 +567,7 @@ export function PaymentDialog({
                             </div>
                         )}
                         <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">GST (18%)</span>
+                            <span className="text-muted-foreground">GST</span>
                             <span>₹{prices.gst.toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between pt-2 border-t font-semibold">
