@@ -6,41 +6,42 @@ import * as z from "zod";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/common/Input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { agentService } from "@/services/agentService";
 import { toast } from "sonner";
-import { ArrowLeft, IndianRupee, Clock, CheckCircle, AlertCircle, CreditCard } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, CheckCircle } from "lucide-react";
+// import { Badge } from "@/components/ui/badge";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
-import { PaymentDialog } from "@/components/common/PaymentDialog";
+// import { PaymentDialog } from "@/components/common/PaymentDialog";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   phone: z.string().min(10, "Phone must be at least 10 digits"),
-  serviceId: z.string().optional(),
+  // serviceId: z.string().optional(), // Removed - service enrollment now done from OnboardedUsers
 });
 
-interface Service {
-  _id: string;
-  name: string;
-  type: string;
-  description: string;
-  price: number;
-  duration: string;
-}
+// interface Service {
+//   _id: string;
+//   name: string;
+//   type: string;
+//   description: string;
+//   price: number;
+//   duration: string;
+// }
 
 export default function CreateUser() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [services, setServices] = useState<Service[]>([]);
-  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  // const [services, setServices] = useState<Service[]>([]); // Removed
+  // const [selectedService, setSelectedService] = useState<Service | null>(null); // Removed
 
-  // Payment Dialog State
-  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
-  const [createdUser, setCreatedUser] = useState<any>(null);
+  // Payment Dialog State - Removed
+  // const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  // const [createdUser, setCreatedUser] = useState<any>(null);
+  // const [pendingUserData, setPendingUserData] = useState<any>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -49,33 +50,32 @@ export default function CreateUser() {
       email: "",
       password: "",
       phone: "",
-      serviceId: "",
+      // serviceId: "", // Removed
     },
   });
 
-  useEffect(() => {
-    fetchServices();
-  }, []);
+  // useEffect(() => {
+  //   fetchServices();
+  // }, []);
 
-  const fetchServices = async () => {
-    try {
-      const response = await agentService.getServices();
-      setServices(response.data);
-    } catch (error) {
-      toast.error("Failed to fetch services");
-    }
-  };
+  // const fetchServices = async () => {
+  //   try {
+  //     const response = await agentService.getServices();
+  //     setServices(response.data);
+  //   } catch (error) {
+  //     toast.error("Failed to fetch services");
+  //   }
+  // };
 
-  const handleServiceChange = (serviceId: string) => {
-    const service = services.find(s => s._id === serviceId);
-    setSelectedService(service || null);
-  };
+  // const handleServiceChange = (serviceId: string) => {
+  //   const service = services.find(s => s._id === serviceId);
+  //   setSelectedService(service || null);
+  // };
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
       setLoading(true);
 
-      // Create user without service enrollment
       const userData = {
         name: values.name,
         email: values.email,
@@ -83,36 +83,29 @@ export default function CreateUser() {
         phone: values.phone,
       };
 
+      // Create user immediately (service enrollment now done from OnboardedUsers)
       const response = await agentService.createEndUser(userData);
-      const user = response.data.user;
-      setCreatedUser(user);
 
-      // If service selected, open payment dialog
-      if (selectedService) {
-        setLoading(false);
-        setPaymentDialogOpen(true);
-        toast.success(`User ${values.name} created! Complete payment to enroll.`);
-      } else {
-        // No service - just show success
-        toast.success("User created successfully!");
-        navigate("/agent/users");
-      }
+      toast.success("User created successfully!");
+      navigate("/agent/users");
+
     } catch (error: any) {
       toast.error(error.response?.data?.error || "Failed to create user");
+    } finally {
       setLoading(false);
     }
   };
 
-  const handlePaymentSuccess = (data: { case: any; payment: any }) => {
-    toast.success(`${createdUser?.name || 'User'} enrolled successfully!`);
-    setPaymentDialogOpen(false);
-    navigate("/agent/users");
-  };
+  // const handlePaymentSuccess = (data: { case: any; payment: any }) => {
+  //   toast.success(`${createdUser?.name || pendingUserData?.name || 'User'} enrolled successfully!`);
+  //   setPaymentDialogOpen(false);
+  //   navigate("/agent/users");
+  // };
 
-  const handlePaymentCancel = () => {
-    toast.info("User created but not enrolled in service.");
-    navigate("/agent/users");
-  };
+  // const handlePaymentCancel = () => {
+  //   toast.info("User created but not enrolled in service.");
+  //   navigate("/agent/users");
+  // };
 
   return (
     <div className="space-y-6">
@@ -194,6 +187,7 @@ export default function CreateUser() {
                   )}
                 />
 
+                {/* Service Selection - Removed (enrollment now done from OnboardedUsers)
                 <FormField
                   control={form.control}
                   name="serviceId"
@@ -227,6 +221,7 @@ export default function CreateUser() {
                     </FormItem>
                   )}
                 />
+                */}
 
                 <div className="flex gap-4 pt-4">
                   <Button type="submit" disabled={loading} className="flex-1">
@@ -234,11 +229,6 @@ export default function CreateUser() {
                       <>
                         <LoadingSpinner size="sm" className="mr-2" />
                         Creating User...
-                      </>
-                    ) : selectedService ? (
-                      <>
-                        <CreditCard className="h-4 w-4 mr-2" />
-                        Create & Proceed to Payment
                       </>
                     ) : (
                       <>
@@ -256,7 +246,7 @@ export default function CreateUser() {
           </CardContent>
         </Card>
 
-        {/* Service Details Sidebar */}
+        {/* Service Details Sidebar - Removed (enrollment now done from OnboardedUsers)
         <div className="space-y-6">
           {selectedService ? (
             <Card>
@@ -298,20 +288,23 @@ export default function CreateUser() {
             </Card>
           )}
         </div>
+        */}
       </div>
 
-      {/* Payment Dialog */}
+      {/* Payment Dialog - Removed (enrollment now done from OnboardedUsers)
       <PaymentDialog
         open={paymentDialogOpen}
         onOpenChange={setPaymentDialogOpen}
         service={selectedService}
         endUserId={createdUser?._id || ""}
-        endUserName={createdUser?.name}
-        endUserEmail={createdUser?.email}
-        endUserPhone={createdUser?.phone}
+        endUserName={createdUser?.name || pendingUserData?.name}
+        endUserEmail={createdUser?.email || pendingUserData?.email}
+        endUserPhone={createdUser?.phone || pendingUserData?.phone}
+        newUserData={!createdUser ? pendingUserData : undefined}
         onSuccess={handlePaymentSuccess}
         onCancel={handlePaymentCancel}
       />
+      */}
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus } from "lucide-react";
+import { Plus, CreditCard } from "lucide-react";
 import { associateService } from "@/services/associateService";
 import { toast } from "sonner";
 
@@ -99,6 +99,20 @@ export default function OnboardedUsers() {
         {
             header: "Created Date",
             accessor: (row) => new Date(row.createdAt).toLocaleDateString(),
+        },
+        {
+            header: "Actions",
+            accessor: "_id",
+            cell: (row) => (
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate(`/associate/enroll/${row._id}`)}
+                >
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Enroll in Service
+                </Button>
+            ),
         },
     ];
 

@@ -82,16 +82,29 @@ const createEnrollment = async (req, res, next) => {
         }
 
         // Determine target user
-        const targetUserId = endUserId || enrollerId;
+        let targetUserId = endUserId;
+        let newUserData = req.body.newUserData; // New Field for deferred creation
 
-        // Validate end user exists
-        const endUser = await User.findById(targetUserId);
-        if (!endUser) {
-            return res.status(404).json({
-                success: false,
-                error: 'User not found'
-            });
+        // If endUserId is provided, use it (Existing Flow)
+        if (targetUserId) {
+            // Validate end user exists
+            const endUser = await User.findById(targetUserId);
+            if (!endUser) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'User not found'
+                });
+            }
+        } else if (!newUserData && !endUserId) {
+            // If neither provided, default to enroller (Self-Enrollment)
+            // But only if enroller is end_user? Or logic implies enroller is target if not specified?
+            // Existing logic was: const targetUserId = endUserId || enrollerId;
+            // Let's preserve that default if NO newUserData is passed
+            targetUserId = enrollerId;
         }
+
+        // Note: If newUserData is present and endUserId is null, we proceed WITHOUT a targetUserId for now.
+        // The user will be created during payment verification.
 
         // Validate service
         const service = await Service.findById(serviceId);
@@ -149,6 +162,7 @@ const createEnrollment = async (req, res, next) => {
                             id: coupon._id
                         } : null,
                         endUserId: targetUserId,
+                        newUserData,
                         enrollerId,
                         enrollerRole
                     }
@@ -171,6 +185,7 @@ const createEnrollment = async (req, res, next) => {
                             id: coupon._id
                         } : null,
                         endUserId: targetUserId,
+                        newUserData,
                         enrollerId,
                         enrollerRole
                     }

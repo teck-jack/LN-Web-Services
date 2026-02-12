@@ -99,3 +99,13 @@ exports.markNotificationAsRead = agentController.markNotificationAsRead;
 // @route   PUT /api/associate/notifications/read-all
 // @access  Private/Associate
 exports.markAllNotificationsAsRead = agentController.markAllNotificationsAsRead;
+
+// @desc    Get enrollment history
+// @route   GET /api/associate/enrollments
+// @access  Private/Associate
+exports.getEnrollmentHistory = agentController.getEnrollmentHistory;
+
+// @desc    Get enrollment receipt
+// @route   GET /api/associate/enrollments/:id/receipt
+// @access  Private/Associate
+exports.getEnrollmentReceipt = agentController.getEnrollmentReceipt;

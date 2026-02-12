@@ -18,6 +18,7 @@ export const paymentService = {
         endUserId?: string;
         isTestMode: boolean;
         couponCode?: string;
+        newUserData?: any; // Optional new user data for deferred creation
     }) => {
         const response = await api.post('/payment/create-order', data);
         return response.data;
@@ -37,6 +38,7 @@ export const paymentService = {
         couponCode?: string;
         couponId?: string;
         discountInfo?: any;
+        newUserData?: any; // Optional new user data
     }) => {
         const response = await api.post('/payment/verify-enrollment', data);
         return response.data;
@@ -138,6 +140,7 @@ export const enrollmentService = {
         };
         couponCode?: string;
         isTestMode?: boolean;
+        newUserData?: any; // Optional new user data for deferred creation
     }) => {
         const response = await api.post('/enrollment/create', data);
         return response.data;

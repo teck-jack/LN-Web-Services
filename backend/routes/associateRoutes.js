@@ -8,7 +8,9 @@ const {
     getReports,
     getNotifications,
     markNotificationAsRead,
-    markAllNotificationsAsRead
+    markAllNotificationsAsRead,
+    getEnrollmentHistory,
+    getEnrollmentReceipt
 } = require('../controllers/associateController');
 const { associateAuth } = require('../middleware/associateAuth');
 
@@ -21,6 +23,9 @@ router.get('/users', getOnboardedUsers);
 router.post('/users', createEndUser);
 router.get('/services', getServices);
 router.get('/services/:id', getServiceById);
+
+router.get('/enrollments', getEnrollmentHistory);
+router.get('/enrollments/:id/receipt', getEnrollmentReceipt);
 
 router.get('/reports', getReports);
 

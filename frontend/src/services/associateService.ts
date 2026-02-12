@@ -18,5 +18,25 @@ export const associateService = {
     // Notifications
     getNotifications: (params?: any) => api.get('/associate/notifications', { params }),
     markNotificationAsRead: (id: string) => api.put(`/associate/notifications/${id}/read`),
-    markAllNotificationsAsRead: () => api.put('/associate/notifications/read-all'),
+    markAllNotificationsAsRead: async () => {
+        const response = await api.put("/associate/notifications/read-all");
+        return response.data;
+    },
+
+    // Enrollment History
+    getEnrollmentHistory: async (params: {
+        page?: number;
+        limit?: number;
+        serviceId?: string;
+        paymentStatus?: string;
+        search?: string;
+    }) => {
+        const response = await api.get("/associate/enrollments", { params });
+        return response.data;
+    },
+
+    getEnrollmentReceipt: async (caseId: string) => {
+        const response = await api.get(`/associate/enrollments/${caseId}/receipt`);
+        return response.data;
+    },
 };

@@ -63,4 +63,21 @@ export const agentService = {
     const response = await api.put("/agent/notifications/read-all");
     return response.data;
   },
+
+  // Enrollment History
+  getEnrollmentHistory: async (params: {
+    page?: number;
+    limit?: number;
+    serviceId?: string;
+    paymentStatus?: string;
+    search?: string;
+  }) => {
+    const response = await api.get("/agent/enrollments", { params });
+    return response.data;
+  },
+
+  getEnrollmentReceipt: async (caseId: string) => {
+    const response = await api.get(`/agent/enrollments/${caseId}/receipt`);
+    return response.data;
+  },
 };

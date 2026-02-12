@@ -2,6 +2,7 @@ const User = require('../models/User');
 const Case = require('../models/Case');
 const Service = require('../models/Service');
 const Notification = require('../models/Notification');
+const Payment = require('../models/Payment');
 const constants = require('../utils/constants');
 const { calculateAgentPerformance } = require('../utils/helpers');
 
@@ -393,6 +394,180 @@ exports.markAllNotificationsAsRead = async (req, res, next) => {
       success: true,
       message: 'All notifications marked as read'
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Get enrollment history
+// @route   GET /api/agent/enrollments
+// @access  Private/Agent
+exports.getEnrollmentHistory = async (req, res, next) => {
+  try {
+    const agentId = req.user.id;
+    const { page = 1, limit = 10, serviceId, paymentStatus, search } = req.query;
+
+    const query = { agentId };
+
+    // Find users belonging to agent
+    // If search is provided, filter users by name
+    if (search) {
+      query.name = { $regex: search, $options: 'i' };
+    }
+
+    const users = await User.find(query).select('_id name email phone');
+    const userIds = users.map(user => user._id);
+
+    // Find cases for these users
+    const caseQuery = { endUserId: { $in: userIds } };
+    if (serviceId) {
+      caseQuery.serviceId = serviceId;
+    }
+
+    // Find cases
+    const cases = await Case.find(caseQuery)
+      .populate('endUser', 'name email phone')
+      .populate('service', 'name type')
+      .sort({ createdAt: -1 });
+
+    // For each case, find the payment
+    const enrollments = [];
+
+    for (const caseItem of cases) {
+      const payment = await Payment.findOne({ caseId: caseItem._id }).sort({ createdAt: -1 });
+
+      // Filter by payment status if provided
+      if (paymentStatus && paymentStatus !== 'all') {
+        if (!payment && paymentStatus !== 'pending') continue;
+        if (payment && payment.status !== paymentStatus) continue;
+      }
+
+      const paymentData = payment ? {
+        amount: payment.amount,
+        status: payment.status,
+        method: payment.paymentMethod,
+        transactionId: payment.transactionId,
+        invoiceNumber: payment.invoiceNumber
+      } : {
+        amount: 0,
+        status: 'pending',
+        method: 'Unknown',
+        invoiceNumber: 'N/A'
+      };
+
+      enrollments.push({
+        _id: caseItem._id, // Use Case ID as enrollment ID
+        caseId: caseItem.caseId,
+        endUser: caseItem.endUser,
+        service: caseItem.service,
+        payment: paymentData,
+        createdAt: caseItem.createdAt,
+        status: caseItem.status
+      });
+    }
+
+    // Manual Pagination
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + parseInt(limit);
+    const paginatedEnrollments = enrollments.slice(startIndex, endIndex);
+
+    // Calculate stats
+    const totalRevenue = enrollments.reduce((sum, item) => sum + (item.payment.status === 'completed' ? item.payment.amount : 0), 0);
+    const thisMonthEnrollments = enrollments.filter(e => {
+      const d = new Date(e.createdAt);
+      const now = new Date();
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    }).length;
+
+    const pendingPayments = enrollments.filter(e => e.payment.status === 'pending').length;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        enrollments: paginatedEnrollments,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total: enrollments.length
+        },
+        statistics: {
+          totalEnrollments: enrollments.length,
+          totalRevenue,
+          thisMonthEnrollments,
+          pendingPayments
+        }
+      }
+    });
+
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Get enrollment receipt
+// @route   GET /api/agent/enrollments/:id/receipt
+// @access  Private/Agent
+exports.getEnrollmentReceipt = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    // Determine if id is ObjectId or custom Case ID
+    let query;
+    if (id.match(/^[0-9a-fA-F]{24}$/)) {
+      query = { _id: id };
+    } else {
+      query = { caseId: id };
+    }
+
+    // Find case
+    const caseItem = await Case.findOne(query)
+      .populate('endUser')
+      .populate('service');
+
+    if (!caseItem) {
+      return res.status(404).json({ success: false, message: 'Enrollment not found' });
+    }
+
+    // Check if user belongs to agent
+    const user = await User.findById(caseItem.endUserId);
+    if (user.agentId.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
+    }
+
+    const payment = await Payment.findOne({ caseId: caseItem._id });
+
+    if (!payment) {
+      return res.status(404).json({ success: false, message: 'Payment record not found' });
+    }
+
+    const receiptData = {
+      receiptNumber: payment.invoiceNumber || 'N/A',
+      issueDate: payment.paymentDate ? payment.paymentDate.toLocaleDateString() : 'N/A',
+      customer: {
+        name: caseItem.endUser.name,
+        email: caseItem.endUser.email,
+        phone: caseItem.endUser.phone
+      },
+      service: {
+        name: caseItem.service.name,
+        type: caseItem.service.type,
+        enrollmentDate: caseItem.createdAt.toLocaleDateString()
+      },
+      payment: {
+        amount: payment.amount,
+        method: payment.paymentMethod,
+        transactionId: payment.transactionId,
+        invoiceNumber: payment.invoiceNumber,
+        status: payment.status,
+        date: payment.paymentDate ? payment.paymentDate.toLocaleDateString() : 'N/A'
+      }
+    };
+
+    res.status(200).json({
+      success: true,
+      data: receiptData
+    });
+
   } catch (err) {
     next(err);
   }

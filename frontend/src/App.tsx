@@ -45,6 +45,11 @@ import AgentNotifications from "./pages/agent/Notifications";
 import AgentProfile from "./pages/agent/Profile";
 import AgentSettings from "./pages/agent/Settings";
 import AgentPaymentHistory from "./pages/agent/PaymentHistory";
+import AgentPaymentSuccess from "./pages/agent/PaymentSuccess";
+import AgentPaymentFailure from "./pages/agent/PaymentFailure";
+import AgentEnrollUser from "./pages/agent/EnrollUser";
+import AgentEnrollmentHistory from "./pages/agent/EnrollmentHistory";
+import AgentEnrollmentReceipt from "./pages/agent/EnrollmentReceipt";
 
 // Associate pages
 import AssociateDashboard from "./pages/associate/Dashboard";
@@ -58,6 +63,11 @@ import AssociateNotifications from "./pages/associate/Notifications";
 import AssociateProfile from "./pages/associate/Profile";
 import AssociateSettings from "./pages/associate/Settings";
 import AssociatePaymentHistory from "./pages/associate/PaymentHistory";
+import AssociatePaymentSuccess from "./pages/associate/PaymentSuccess";
+import AssociatePaymentFailure from "./pages/associate/PaymentFailure";
+import AssociateEnrollUser from "./pages/associate/EnrollUser";
+import AssociateEnrollmentHistory from "./pages/associate/EnrollmentHistory";
+import AssociateEnrollmentReceipt from "./pages/associate/EnrollmentReceipt";
 
 // Employee pages
 import EmployeeDashboard from "./pages/employee/Dashboard";
@@ -172,6 +182,11 @@ const App = () => (
                   <Route path="/agent/profile" element={<ProtectedRoute allowedRoles={["agent"]}><MainLayout><AgentProfile /></MainLayout></ProtectedRoute>} />
                   <Route path="/agent/settings" element={<ProtectedRoute allowedRoles={["agent"]}><MainLayout><AgentSettings /></MainLayout></ProtectedRoute>} />
                   <Route path="/agent/payment-history" element={<ProtectedRoute allowedRoles={["agent"]}><MainLayout><AgentPaymentHistory /></MainLayout></ProtectedRoute>} />
+                  <Route path="/agent/payment/success" element={<ProtectedRoute allowedRoles={["agent"]}><AgentPaymentSuccess /></ProtectedRoute>} />
+                  <Route path="/agent/payment/failure" element={<ProtectedRoute allowedRoles={["agent"]}><AgentPaymentFailure /></ProtectedRoute>} />
+                  <Route path="/agent/enroll/:userId" element={<ProtectedRoute allowedRoles={["agent"]}><MainLayout><AgentEnrollUser /></MainLayout></ProtectedRoute>} />
+                  <Route path="/agent/enrollment-history" element={<ProtectedRoute allowedRoles={["agent"]}><MainLayout><AgentEnrollmentHistory /></MainLayout></ProtectedRoute>} />
+                  <Route path="/agent/receipt/:caseId" element={<ProtectedRoute allowedRoles={["agent"]}><AgentEnrollmentReceipt /></ProtectedRoute>} />
 
                   {/* Associate routes */}
                   <Route path="/associate/dashboard" element={<ProtectedRoute allowedRoles={["associate"]}><MainLayout><AssociateDashboard /></MainLayout></ProtectedRoute>} />
@@ -185,6 +200,11 @@ const App = () => (
                   <Route path="/associate/profile" element={<ProtectedRoute allowedRoles={["associate"]}><MainLayout><AssociateProfile /></MainLayout></ProtectedRoute>} />
                   <Route path="/associate/settings" element={<ProtectedRoute allowedRoles={["associate"]}><MainLayout><AssociateSettings /></MainLayout></ProtectedRoute>} />
                   <Route path="/associate/payment-history" element={<ProtectedRoute allowedRoles={["associate"]}><MainLayout><AssociatePaymentHistory /></MainLayout></ProtectedRoute>} />
+                  <Route path="/associate/payment/success" element={<ProtectedRoute allowedRoles={["associate"]}><AssociatePaymentSuccess /></ProtectedRoute>} />
+                  <Route path="/associate/payment/failure" element={<ProtectedRoute allowedRoles={["associate"]}><AssociatePaymentFailure /></ProtectedRoute>} />
+                  <Route path="/associate/enroll/:userId" element={<ProtectedRoute allowedRoles={["associate"]}><MainLayout><AssociateEnrollUser /></MainLayout></ProtectedRoute>} />
+                  <Route path="/associate/enrollment-history" element={<ProtectedRoute allowedRoles={["associate"]}><MainLayout><AssociateEnrollmentHistory /></MainLayout></ProtectedRoute>} />
+                  <Route path="/associate/receipt/:caseId" element={<ProtectedRoute allowedRoles={["associate"]}><AssociateEnrollmentReceipt /></ProtectedRoute>} />
 
                   {/* Employee routes */}
                   <Route path="/employee/dashboard" element={<ProtectedRoute allowedRoles={["employee"]}><MainLayout><EmployeeDashboard /></MainLayout></ProtectedRoute>} />

@@ -138,6 +138,12 @@ const navItems: NavItem[] = [
     roles: ["agent"],
   },
   {
+    title: "Enrollment History",
+    href: "/agent/enrollment-history",
+    icon: FileText,
+    roles: ["agent"],
+  },
+  {
     title: "Notifications",
     href: "/agent/notifications",
     icon: Bell,
@@ -172,6 +178,12 @@ const navItems: NavItem[] = [
     title: "Payment History",
     href: "/associate/payment-history",
     icon: IndianRupee,
+    roles: ["associate"],
+  },
+  {
+    title: "Enrollment History",
+    href: "/associate/enrollment-history",
+    icon: FileText,
     roles: ["associate"],
   },
   {

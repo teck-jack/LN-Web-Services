@@ -113,7 +113,8 @@ exports.verifyEnrollment = async (req, res, next) => {
             couponCode,
             couponId,
             discountInfo,
-            isTestMode
+            isTestMode,
+            newUserData // New field
         } = req.body;
 
         const enrollerId = req.user.id;
@@ -128,9 +129,42 @@ exports.verifyEnrollment = async (req, res, next) => {
         }
 
         // Determine target user (self or someone else)
-        const targetUserId = endUserId || enrollerId;
+        let targetUserId = endUserId || enrollerId;
+        // const newUserData = req.body.newUserData; // Already destructured above
 
-        // Validate end user exists
+        // Handle deferred user creation if endUserId is missing but newUserData exists
+        if (!targetUserId && newUserData) {
+            // Check if user already exists
+            const existingUser = await User.findOne({
+                $or: [{ email: newUserData.email }, { phone: newUserData.phone }]
+            });
+
+            if (existingUser) {
+                // Determine if we should fail or use existing
+                // For security, if we are creating a NEW user, we shouldn't link to existing without auth?
+                // But Agent/Associate might be trying to enroll an existing user they forgot?
+                // Let's FAIL to avoid confusion/security issues, and ask them to select the user instead.
+                return res.status(400).json({
+                    success: false,
+                    error: 'User with this email or phone already exists. Please select them from the list instead of creating new.'
+                });
+            }
+
+            // Create new User
+            const password = newUserData.password || Math.random().toString(36).slice(-8); // Fallback if no password (should be there)
+
+            const newUser = await User.create({
+                ...newUserData,
+                role: constants.USER_ROLES.END_USER,
+                sourceTag: constants.SOURCE_TAGS.AGENT_REFERRAL, // Or derive from enroller?
+                agentId: enrollerId, // Assuming enroller is Agent/Associate
+                password // Will be hashed by pre-save
+            });
+
+            targetUserId = newUser._id;
+        }
+
+        // Validate end user exists (Double check)
         const endUser = await User.findById(targetUserId);
         if (!endUser) {
             return res.status(404).json({
@@ -239,10 +273,12 @@ exports.verifyEnrollment = async (req, res, next) => {
         paymentData.paymentMetadata = {
             enrolledBy: enrollerId,
             enrollerRole: req.user.role,
-            paymentInitiatedFrom: req.user.role === 'end_user' ? 'end_user_portal' :
-                req.user.role === 'employee' ? 'employee_panel' :
-                    req.user.role === 'admin' ? 'admin_panel' :
-                        req.user.role === 'agent' ? 'agent_portal' : 'unknown'
+            paymentInitiatedFrom:
+                req.user.role === constants.USER_ROLES.END_USER ? 'end_user_portal' :
+                    req.user.role === constants.USER_ROLES.EMPLOYEE ? 'employee_panel' :
+                        req.user.role === constants.USER_ROLES.ADMIN ? 'admin_panel' :
+                            req.user.role === constants.USER_ROLES.AGENT ? 'agent_portal' :
+                                req.user.role === constants.USER_ROLES.ASSOCIATE ? 'associate_portal' : 'unknown'
         };
 
         // Create payment record

@@ -150,7 +150,7 @@ export default function ServiceDetails() {
           <Button
             className="w-full"
             size="lg"
-            onClick={() => navigate(`/agent/users/create?serviceId=${service._id}`)}
+            onClick={() => navigate(`/agent/users`)}
           >
             Onboard User with this Service
           </Button>

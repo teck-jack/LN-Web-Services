@@ -33,6 +33,7 @@ import { toast } from "sonner";
 import { paymentService, enrollmentService } from "@/services/paymentService";
 import { couponService } from "@/services/couponService";
 import { useAuth } from "@/context/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 interface Service {
     _id: string;
@@ -53,6 +54,7 @@ interface PaymentDialogProps {
     endUserPhone?: string;
     onSuccess?: (data: { case: any; payment: any }) => void;
     onCancel?: () => void;
+    newUserData?: any; // Optional new user data for deferred creation
 }
 
 interface SuccessData {
@@ -82,6 +84,7 @@ export function PaymentDialog({
     endUserPhone,
     onSuccess,
     onCancel,
+    newUserData,
 }: PaymentDialogProps) {
     const { user } = useAuth();
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('razorpay');
@@ -93,6 +96,7 @@ export function PaymentDialog({
     const [validatingCoupon, setValidatingCoupon] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
     const [successData, setSuccessData] = useState<SuccessData | null>(null);
+    const navigate = useNavigate();
 
     // Cash payment details
     const [cashDetails, setCashDetails] = useState({
@@ -195,7 +199,8 @@ export function PaymentDialog({
                         receiptNumber: cashDetails.receiptNumber || undefined,
                         notes: cashDetails.notes || 'Cash payment received'
                     },
-                    couponCode: appliedCoupon?.coupon?.code
+                    couponCode: appliedCoupon?.coupon?.code,
+                    newUserData // Pass new user data for deferred creation
                 });
 
                 if (response.success) {
@@ -217,7 +222,8 @@ export function PaymentDialog({
                 serviceId: service._id,
                 paymentMethod: paymentMethod === 'test_payment' ? 'test_payment' : 'razorpay',
                 isTestMode: isTest,
-                couponCode: appliedCoupon?.coupon?.code
+                couponCode: appliedCoupon?.coupon?.code,
+                newUserData // Pass new user data for deferred creation
             });
 
             if (!enrollResponse.success || !enrollResponse.requiresPaymentVerification) {
@@ -238,6 +244,7 @@ export function PaymentDialog({
                     couponCode: coupon?.code,
                     couponId: coupon?.id,
                     discountInfo: discount,
+                    newUserData // Pass new user data for verification/creation
                 });
 
                 if (verifyResponse.success) {
@@ -270,22 +277,67 @@ export function PaymentDialog({
                                 couponCode: coupon?.code,
                                 couponId: coupon?.id,
                                 discountInfo: discount,
+                                newUserData // Pass new user data for verification/creation
                             });
 
                             if (verifyResponse.success) {
-                                setSuccessData({
-                                    case: verifyResponse.data.case,
-                                    payment: verifyResponse.data.payment,
+                                // Redirect to success page with payment details
+                                const successParams = new URLSearchParams({
+                                    userName: endUserName || "",
+                                    userEmail: endUserEmail || "",
+                                    userId: endUserId,
+                                    serviceName: service.name,
+                                    amount: prices.total.toString(),
+                                    paymentId: response.razorpay_payment_id,
+                                    caseId: verifyResponse.data.case._id,
                                 });
-                                setShowSuccess(true);
+
+                                const successUrl = user?.role === 'agent'
+                                    ? `/agent/payment/success?${successParams}`
+                                    : `/associate/payment/success?${successParams}`;
+
+                                onOpenChange(false);
+                                navigate(successUrl);
                                 toast.success("Payment successful!");
                             }
                         } catch (error: any) {
+                            // Redirect to failure page with error details
+                            const failureParams = new URLSearchParams({
+                                userName: endUserName || "",
+                                userId: endUserId,
+                                serviceName: service.name,
+                                amount: prices.total.toString(),
+                                error: error.message || "Payment verification failed",
+                                reason: error.response?.data?.error || "",
+                            });
+
+                            const failureUrl = user?.role === 'agent'
+                                ? `/agent/payment/failure?${failureParams}`
+                                : `/associate/payment/failure?${failureParams}`;
+
+                            onOpenChange(false);
+                            navigate(failureUrl);
                             toast.error(error.message || "Payment verification failed");
                         }
                         setProcessing(false);
                     },
                     onFailure: (error) => {
+                        // Redirect to failure page
+                        const failureParams = new URLSearchParams({
+                            userName: endUserName || "",
+                            userId: endUserId,
+                            serviceName: service.name,
+                            amount: prices.total.toString(),
+                            error: error.error?.description || "Payment failed",
+                            reason: error.error?.reason || "",
+                        });
+
+                        const failureUrl = user?.role === 'agent'
+                            ? `/agent/payment/failure?${failureParams}`
+                            : `/associate/payment/failure?${failureParams}`;
+
+                        onOpenChange(false);
+                        navigate(failureUrl);
                         toast.error(`Payment failed: ${error.error?.description || "Unknown error"}`);
                         setProcessing(false);
                     },
